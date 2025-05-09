@@ -1,0 +1,11 @@
+[
+  {
+    "name": "receiver3",
+    "email": "receiver3@123",
+    "phone": "1234567890",
+    "password": "receiver3",
+    "id": "receiver-1746815000649",
+    "createdAt": "2025-05-09T18:23:20.649Z",
+    "approved": false
+  }
+]
