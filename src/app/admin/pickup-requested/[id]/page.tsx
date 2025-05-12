@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 
@@ -145,7 +146,7 @@ const PickupRequestDetailPage: React.FC = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: request?.id, updates }),
+        body: JSON.stringify({ id: request?._id || request?.id, updates }),
       });
 
       const result = await response.json();
@@ -234,7 +235,7 @@ const PickupRequestDetailPage: React.FC = () => {
       <div className="mb-4">
         <strong>Image Uploaded:</strong>{" "}
         {request.deviceImageUrl ? (
-          <img src={request.deviceImageUrl} alt="Device" className="max-w-xs" />
+          <Image src={request.deviceImageUrl} alt="Device" className="max-w-xs" width={400} height={300} />
         ) : (
           "No image uploaded"
         )}
@@ -268,7 +269,7 @@ const PickupRequestDetailPage: React.FC = () => {
       <div className="mb-4">
         <strong>Collection Proof:</strong>{" "}
         {request.collectionProof ? (
-          <img src={request.collectionProof} alt="Collection Proof" className="max-w-xs max-h-48" />
+          <Image src={request.collectionProof} alt="Collection Proof" className="max-w-xs max-h-48" width={400} height={300} />
         ) : (
           "No proof uploaded"
         )}
@@ -302,13 +303,14 @@ const PickupRequestDetailPage: React.FC = () => {
         </div>
       )}
 
-      <button
-        className="bg-green-600 text-white py-2 px-4 rounded mr-4"
-        onClick={approvePickup}
-        disabled={!!request.assignedReceiver}
-      >
-        Approve Pickup
-      </button>
+      {!request.assignedReceiver && (
+        <button
+          className="bg-green-600 text-white py-2 px-4 rounded mr-4"
+          onClick={approvePickup}
+        >
+          Approve Pickup
+        </button>
+      )}
 
       {request.status === "collected" && request.receivedBy !== "Recycler" && (
         <button
