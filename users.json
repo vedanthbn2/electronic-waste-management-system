@@ -43,5 +43,16 @@
     "id": "user-1746815022991",
     "createdAt": "2025-05-09T18:23:42.991Z",
     "approved": false
-  }
+  },
+  {
+  "name": "Admin User",
+  "email": "admin@local.com",
+  "phone": "0987654321",
+  "password": "admin123",
+  "id": "user-admin-0001",
+  "createdAt": "2025-05-10T00:00:00.000Z",
+  "approved": true,
+  "role": "admin"
+}
+
 ]

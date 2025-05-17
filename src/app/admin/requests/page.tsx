@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { getToken, getUser } from "../../sign-in/auth";
@@ -161,3 +162,4 @@ const RequestsPage: React.FC = () => {
   );
 };
 
+export default RequestsPage;

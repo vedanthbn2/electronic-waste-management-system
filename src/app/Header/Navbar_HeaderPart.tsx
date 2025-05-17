@@ -8,6 +8,52 @@ import { menuOutline, closeOutline, location } from "ionicons/icons";
 import logo from "../../assets/ELocate-s.png";
 import { getUser, handleLogout } from "../sign-in/auth";
 
+const NavItem = ({ label, isAdmin }: { label: string; isAdmin: boolean }) => {
+  // Map label to correct href path based on user role
+  let href = "/";
+  if (isAdmin) {
+    switch (label) {
+      case "Customers":
+        href = "/admin/customers";
+        break;
+      case "Employees":
+        href = "/admin/employees";
+        break;
+      case "User Feedback/Queries":
+        href = "/admin/user-feedback-queries";
+        break;
+      case "E-Waste Requests":
+        href = "/admin/pickup-requested";
+        break;
+      default:
+        href = "/";
+    }
+  } else {
+    switch (label) {
+      case "Home":
+        href = "/";
+        break;
+      case "My Requests":
+        href = "/my-requests";
+        break;
+      case "Receiver Dashboard":
+        href = "/pickup-requests"; // Updated to actual receiver dashboard page showing approved tasks
+        break;
+      case "Message":
+        href = "/receiver/messages";
+        break;
+      default:
+        href = `/${label.toLowerCase()}`;
+    }
+  }
+
+  return (
+    <li className="navbar-link">
+      <Link href={href}>{label}</Link>
+    </li>
+  );
+};
+
 const Header = () => {
   const [isNavbarActive, setIsNavbarActive] = useState(false);
   const [isHeaderActive, setIsHeaderActive] = useState(false);

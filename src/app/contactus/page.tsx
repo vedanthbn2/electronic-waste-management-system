@@ -1,6 +1,4 @@
-import dynamic from 'next/dynamic';
-
-const ContactUs = dynamic(() => import('./ContactUs'), { ssr: false });
+import ContactUs from './ContactUs';
 
 export default function ContactUsPage() {
   return <ContactUs />;

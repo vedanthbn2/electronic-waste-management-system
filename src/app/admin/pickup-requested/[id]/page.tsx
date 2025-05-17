@@ -161,34 +161,34 @@ const PickupRequestDetailPage: React.FC = () => {
     }
   };
 
-  const markReceivedByRecycler = async () => {
-    if (!request) return;
+const markReceivedByRecycler = async () => {
+  if (!request) return;
 
-    try {
-      const updates = {
-        receivedBy: "Recycler",
-        status: "received_by_recycler",
-      };
+  try {
+    const updates = {
+      receivedBy: "Recycler",
+      status: "received by recycler",
+    };
 
-      const response = await fetch("/api/recycling-requests", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id: request.id, updates }),
-      });
+    const response = await fetch("/api/recycling-requests", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: request.id, updates }),
+    });
 
-      const result = await response.json();
-      if (result.success) {
-        alert("Marked as received by recycler.");
-        window.location.reload();
-      } else {
-        alert("Failed to mark as received: " + result.error);
-      }
-    } catch (error) {
-      alert("Error marking as received: " + error);
+    const result = await response.json();
+    if (result.success) {
+      alert("Marked as received by recycler.");
+      window.location.reload();
+    } else {
+      alert("Failed to mark as received: " + result.error);
     }
-  };
+  } catch (error) {
+    alert("Error marking as received: " + error);
+  }
+};
 
   if (loading) {
     return <div className="p-8">Loading request details...</div>;
@@ -312,14 +312,19 @@ const PickupRequestDetailPage: React.FC = () => {
         </button>
       )}
 
-      {request.status === "collected" && request.receivedBy !== "Recycler" && (
-        <button
-          className="bg-blue-600 text-white py-2 px-4 rounded"
-          onClick={markReceivedByRecycler}
-        >
-          Received by Recycler
-        </button>
-      )}
+{request.status === "received" && request.receivedBy !== "Recycler" ? (
+  <button
+    className="bg-blue-600 text-white py-2 px-4 rounded"
+    onClick={markReceivedByRecycler}
+  >
+    Received by Recycler
+  </button>
+) : request.status === "received by recycler" ? (
+  <div className="p-4 bg-green-100 rounded border border-green-400 text-green-700">
+    <p><strong>E-waste received by recycler on:</strong></p>
+    <p>{new Date(request.createdAt).toLocaleString()}</p>
+  </div>
+) : null}
 
       <button
         className="bg-gray-600 text-white py-2 px-4 rounded ml-4"

@@ -64,11 +64,10 @@ const PickupRequestedPage: React.FC = () => {
               <th className="py-3 px-4 text-left">Phone Number</th>
               <th className="py-3 px-4 text-left">Category</th>
               <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-left">Received By</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {requests.map((request) => (
+            {requests.filter(request => request.status !== "received").map((request) => (
               <tr
                 key={request.id}
                 onClick={() => handleRowClick(request.id)}
@@ -79,7 +78,6 @@ const PickupRequestedPage: React.FC = () => {
                 <td className="py-3 px-4">{request.phone}</td>
                 <td className="py-3 px-4">{request.category}</td>
                 <td className="py-3 px-4">{request.status}</td>
-                <td className="py-3 px-4">{request.receivedBy}</td>
               </tr>
             ))}
           </tbody>

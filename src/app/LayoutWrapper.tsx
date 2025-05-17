@@ -4,6 +4,7 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import Navbar from "./Header/Navbar";
 import Footer from "./Footer/Footer";
+import { NotificationProvider } from "./Components/NotificationContext";
 
 const LayoutWrapper = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -14,13 +15,15 @@ const LayoutWrapper = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-[calc(100vh-64px)] flex flex-col pt-20">
-        {children}
-      </main>
-      <Footer />
-    </>
+    <NotificationProvider>
+      <>
+        <Navbar />
+        <main className="min-h-[calc(100vh-64px)] flex flex-col pt-20">
+          {children}
+        </main>
+        <Footer />
+      </>
+    </NotificationProvider>
   );
 };
 

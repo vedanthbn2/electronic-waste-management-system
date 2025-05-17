@@ -183,3 +183,10 @@ const Smartphone: React.FC = () => {
               required
             />
           </div>
+        </fieldset>
+      </form>
+    </div>
+  );
+};
+
+export default Smartphone;

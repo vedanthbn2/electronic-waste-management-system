@@ -51,11 +51,10 @@ const EmployeesPage: React.FC = () => {
   const handleSendMessage = async () => {
     if (!selectedEmployee) return;
     try {
-      // Assuming API endpoint to send message to employee exists
-      const response = await fetch(`/api/employees/${selectedEmployee.id}/message`, {
+      const response = await fetch("/api/notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: messageText }),
+        body: JSON.stringify({ receiverId: selectedEmployee.id, message: messageText }),
       });
       const result = await response.json();
       if (result.success) {

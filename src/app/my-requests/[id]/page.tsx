@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -39,6 +41,14 @@ const MyRequestDetailPage: React.FC = () => {
   const [request, setRequest] = useState<RequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Editable fields state
+  const [editAddress, setEditAddress] = useState("");
+  const [editPickupDate, setEditPickupDate] = useState("");
+  const [editPickupTime, setEditPickupTime] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   useEffect(() => {
     const fetchRequest = async () => {
       try {
@@ -70,6 +80,10 @@ const MyRequestDetailPage: React.FC = () => {
             category: found.category || "",
             model: found.model || "",
           });
+          // Initialize editable fields
+          setEditAddress(found.address || "");
+          setEditPickupDate(found.pickupDate || "");
+          setEditPickupTime(found.pickupTime || "");
         } else {
           setRequest(null);
         }
@@ -83,6 +97,50 @@ const MyRequestDetailPage: React.FC = () => {
 
     fetchRequest();
   }, [id]);
+
+  const editableStatuses = ["pending", "submitted"];
+  const isEditable = request && editableStatuses.includes(request.status);
+
+  const handleSave = async () => {
+    if (!request) return;
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      const response = await fetch("/api/recycling-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: request.id,
+          updates: {
+            address: editAddress,
+            pickupDate: editPickupDate,
+            pickupTime: editPickupTime,
+          },
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRequest((prev) =>
+          prev
+            ? {
+                ...prev,
+                address: editAddress,
+                pickupDate: editPickupDate,
+                pickupTime: editPickupTime,
+              }
+            : prev
+        );
+        setSaveSuccess(true);
+      } else {
+        setSaveError(result.error || "Failed to save changes");
+      }
+    } catch (error) {
+      setSaveError("Failed to save changes");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-8">Loading request details...</div>;
@@ -103,25 +161,20 @@ const MyRequestDetailPage: React.FC = () => {
   }
 
   const renderTrackOrderStatus = () => {
-    if (request.status === "approved") {
-      return (
-        <>
-          <p className="text-green-600 font-semibold">Request Accepted</p>
-          {request.assignedReceiver ? (
-            <p className="text-blue-600 font-semibold mt-2">
-              Scheduled to receiver: {request.assignedReceiver.name}
-            </p>
-          ) : (
-            <p className="text-gray-600 mt-2">Waiting for receiver assignment</p>
-          )}
-        </>
-      );
-    } else if (request.status === "collected") {
-      return (
-        <p className="text-green-700 font-semibold">Pickup request approved and collected</p>
-      );
-    } else {
-      return <p className="text-red-600 font-semibold">Request not accepted yet</p>;
+    switch (request.status) {
+      case "pending":
+      case "submitted":
+        return <p className="text-blue-600 font-semibold">Your request has been successfully submitted.</p>;
+      case "approved":
+        return <p className="text-green-600 font-semibold">Your request has been approved. Our partner will reach out to you as soon as possible.</p>;
+      case "collected":
+      case "picked_up":
+        return <p className="text-yellow-600 font-semibold">Your e-waste has been collected by our partner.</p>;
+      case "received":
+      case "delivered":
+        return <p className="text-green-700 font-semibold">Your e-waste has been received by the recycler.</p>;
+      default:
+        return <p className="text-red-600 font-semibold">Request not accepted yet</p>;
     }
   };
 
@@ -144,61 +197,82 @@ const MyRequestDetailPage: React.FC = () => {
         <strong>Model:</strong> {request.model || request.recycleItem}
       </div>
       <div className="mb-4">
-        <strong>Device Condition:</strong> {request.deviceCondition || "N/A"}
-      </div>
+        <strong>Device Condition:</strong> {request.deviceCondition || "N/A"}</div>
       <div className="mb-4">
-        <strong>Accessories Included:</strong> {request.accessories?.join(", ") || "None"}
-      </div>
+        <strong>Accessories Included:</strong> {request.accessories?.join(", ") || "None"}</div>
       <div className="mb-4">
         <strong>Image Uploaded:</strong>{" "}
         {request.deviceImageUrl ? (
-          <img src={request.deviceImageUrl} alt="Device" className="max-w-xs" />
+          <Image src={request.deviceImageUrl} alt="Device" className="max-w-xs" width={400} height={300} />
         ) : (
           "No image uploaded"
         )}
       </div>
-      <div className="mb-4">
-        <strong>Pickup Date:</strong> {request.pickupDate}
+
+      {/* Editable panel */}
+      <div className="mb-6 p-4 border rounded bg-gray-50">
+        <h2 className="text-xl font-semibold mb-4">Edit Pickup Details</h2>
+        <label className="block mb-2">
+          Pickup Address:
+          <input
+            type="text"
+            value={editAddress}
+            onChange={(e) => setEditAddress(e.target.value)}
+            disabled={!isEditable}
+            className="w-full p-2 border rounded mt-1"
+          />
+        </label>
+        <label className="block mb-2">
+          Pickup Date:
+          <input
+            type="date"
+            value={editPickupDate}
+            onChange={(e) => setEditPickupDate(e.target.value)}
+            disabled={!isEditable}
+            className="w-full p-2 border rounded mt-1"
+          />
+        </label>
+        <label className="block mb-2">
+          Pickup Time:
+          <input
+            type="time"
+            value={editPickupTime}
+            onChange={(e) => setEditPickupTime(e.target.value)}
+            disabled={!isEditable}
+            className="w-full p-2 border rounded mt-1"
+          />
+        </label>
+        {saveError && <p className="text-red-600 mb-2">{saveError}</p>}
+        {saveSuccess && <p className="text-green-600 mb-2">Changes saved successfully!</p>}
+        <button
+          onClick={handleSave}
+          disabled={!isEditable || isSaving}
+          className={`mt-2 px-4 py-2 rounded text-white ${
+            isEditable && !isSaving ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"
+          }`}
+        >
+          {isSaving ? "Saving..." : "Save Changes"}
+        </button>
       </div>
+
       <div className="mb-4">
-        <strong>Pickup Time:</strong> {request.pickupTime}
-      </div>
+        <strong>Pickup Date:</strong> {request.pickupDate}</div>
       <div className="mb-4">
-        <strong>Pickup Address:</strong> {request.address}
-      </div>
+        <strong>Pickup Time:</strong> {request.pickupTime}</div>
       <div className="mb-4">
-        <strong>Preferred Contact Number:</strong> {request.preferredContactNumber || "N/A"}
-      </div>
+        <strong>Pickup Address:</strong> {request.address}</div>
       <div className="mb-4">
-        <strong>Alternate Contact Number:</strong> {request.alternateContactNumber || "N/A"}
-      </div>
+        <strong>Preferred Contact Number:</strong> {request.preferredContactNumber || "N/A"}</div>
       <div className="mb-4">
-        <strong>Special Pickup Instructions:</strong> {request.specialInstructions || "None"}
-      </div>
+        <strong>Alternate Contact Number:</strong> {request.alternateContactNumber || "N/A"}</div>
       <div className="mb-4">
-        <strong>Declaration Checked:</strong> {request.declarationChecked ? "Yes" : "No"}
-      </div>
+        <strong>Special Pickup Instructions:</strong> {request.specialInstructions || "None"}</div>
       <div className="mb-4">
-        <strong>Location:</strong>{" "}
-        {request.location ? (
-          <a
-            href={`https://www.google.com/maps?q=${request.location.lat},${request.location.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:underline"
-          >
-            {request.location.address || `${request.location.lat.toFixed(4)}, ${request.location.lng.toFixed(4)}`}
-          </a>
-        ) : (
-          "No location"
-        )}
-      </div>
+        <strong>Declaration Checked:</strong> {request.declarationChecked ? "Yes" : "No"}</div>
       <div className="mb-4">
-        <strong>Status:</strong> {request.status}
-      </div>
+        <strong>Status:</strong> {request.status}</div>
       <div className="mb-4">
-        <strong>Created At:</strong> {new Date(request.createdAt).toLocaleString()}
-      </div>
+        <strong>Created At:</strong> {new Date(request.createdAt).toLocaleString()}</div>
       <div className="mb-4">
         <strong>Track Order:</strong>
         <div className="mt-2">{renderTrackOrderStatus()}</div>

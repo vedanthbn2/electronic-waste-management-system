@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1747231708827",
+    "userId": null,
+    "receiverId": "receiver-1747075289014",
+    "message": "hello",
+    "read": false,
+    "createdAt": "2025-05-14T14:08:28.827Z"
+  },
+  {
+    "id": "1747231784492",
+    "userId": null,
+    "receiverId": "receiver-1747075289014",
+    "message": "hello!",
+    "read": false,
+    "createdAt": "2025-05-14T14:09:44.492Z"
+  },
+  {
+    "id": "1747232198652",
+    "userId": null,
+    "receiverId": "receiver-1747075289014",
+    "message": "hello!!!!",
+    "read": false,
+    "createdAt": "2025-05-14T14:16:38.652Z"
+  }
+]

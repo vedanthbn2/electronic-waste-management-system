@@ -136,7 +136,7 @@ const ContactUs = () => {
   return (
     <>
       <Head>
-        <title>ELocate - Connect With Our Sustainability Experts</title>
+        <title>E-Waste - Connect With Our Sustainability Experts</title>
         <meta
           name="description"
           content="Have questions about e-waste management or our platform? Get in touch with ELocate's dedicated team for personalized assistance and information."
@@ -169,16 +169,8 @@ const ContactUs = () => {
             Whether you have questions about our services, want to suggest a recycling facility, or need assistance with e-waste management, our dedicated team is here to help you make environmentally responsible choices.
           </p>
           {/* Messages button */}
-          {user && (
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => setShowMessagesModal(true)}
-                className="bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 transition"
-              >
-                Messages
-              </button>
-            </div>
-          )}
+          {/* Removed Messages button from here */}
+          {/* Messages button moved inside the form after submit button */}
         </div>
         <div className="container mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 justify-center gap-8 mt-10">
@@ -202,7 +194,7 @@ const ContactUs = () => {
                     type="text"
                     id="name"
                     name="name"
-                    className="email-field"
+                    className="email-field bg-white"
                     placeholder="Enter your full name"
                     value={formData.name}
                     onChange={handleInputChange}
@@ -220,7 +212,7 @@ const ContactUs = () => {
                     type="email"
                     id="email"
                     name="email"
-                    className="email-field"
+                    className="email-field bg-white"
                     placeholder="Your email address"
                     value={formData.email}
                     onChange={handleInputChange}
@@ -238,7 +230,7 @@ const ContactUs = () => {
                     type="phone"
                     id="phone"
                     name="phone"
-                    className="email-field"
+                    className="email-field bg-white"
                     placeholder="Your contact number"
                     value={formData.phone}
                     onChange={handleInputChange}
@@ -256,19 +248,29 @@ const ContactUs = () => {
                     id="message"
                     name="message"
                     rows={4}
-                    className="border rounded-md py-3 text-xl px-4 w-full resize-none focus:outline-none focus:ring focus:border-blue-300"
+                    className="border rounded-md py-3 text-xl px-4 w-full resize-none focus:outline-none focus:ring focus:border-blue-300 bg-white"
                     placeholder="How can we assist with your e-waste management needs?"
                     value={formData.message}
                     onChange={handleInputChange}
                     required
                   ></textarea>
                 </div>
-                <button
-                  type="submit"
-                  className="bg-emerald-500 text-white font-bold py-3 px-6 btn btn-secondary hover:bg-white-700 transition-colors duration-300"
-                >
-                  Send Your Message
-                </button>
+                <div className="flex space-x-4">
+                  <button
+                    type="submit"
+                    className="bg-emerald-500 text-white font-bold py-3 px-6 btn btn-secondary hover:bg-white-700 transition-colors duration-300"
+                  >
+                    Send Your Message
+                  </button>
+                  {user && (
+                    <button
+                      onClick={() => setShowMessagesModal(true)}
+                      className="bg-emerald-500 text-white font-bold py-2 px-6 btn btn-secondary hover:bg-emerald-700 transition-colors duration-300"
+                    >
+                      Messages
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
 
@@ -287,9 +289,9 @@ const ContactUs = () => {
                   <div>
                     <h4 className="font-semibold text-xl mb-1">Our Location</h4>
                     <address className="contact-link address text-gray-600">
-                      Main Office: Chh. Sambhajinagar (Aurangabad),
+                      Main Office:PES UNIVERSITY,BENGALURU
                       <br />
-                      Maharashtra, India 431001
+                      KARNATAKA, India 560056
                     </address>
                   </div>
                 </li>
@@ -326,7 +328,7 @@ const ContactUs = () => {
                       href="mailto:contact@elocate.com"
                       className="contact-link text-gray-600 hover:text-emerald-500 transition-colors duration-300"
                     >
-                      contact@elocate.com
+                      recycleewaste@gmail.com
                     </Link>
                     <p className="text-sm text-gray-500">We respond within 24 hours</p>
                   </div>

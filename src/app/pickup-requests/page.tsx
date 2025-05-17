@@ -5,8 +5,8 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 
 interface PickupRequest {
-  id: string;
-  _id?: string;
+  _id: string;
+  id?: string;
   userId: string;
   fullName: string;
   phone: number;
@@ -41,11 +41,17 @@ const PickupRequestsPage: React.FC = () => {
       }
       try {
         const response = await axios.get("/api/recycling-requests");
+        console.log("User id from localStorage:", user?.id);
+        console.log("Fetched requests:", response.data);
         // Filter requests assigned to this receiver
         const assignedRequests = response.data.filter(
-          (req: any) =>
-            req.assignedReceiver && req.assignedReceiver.id === user.id
+          (req: any) => {
+            const assignedId = req.assignedReceiver?.id;
+            console.log(`Checking request ${req._id} assignedReceiver.id:`, assignedId);
+            return assignedId === user.id;
+          }
         );
+        console.log("Filtered assigned requests:", assignedRequests);
         setRequests(assignedRequests);
       } catch (error) {
         console.error("Error fetching pickup requests:", error);
@@ -83,13 +89,13 @@ const PickupRequestsPage: React.FC = () => {
 
     try {
       const updates = {
-        status: "collected",
+        status: "received",
         collectionNotes: note,
         collectionProof: image,
       };
 
-      // Use _id if available for PATCH request
-      const requestToUpdate = requests.find((req) => req.id === id);
+      // Use _id consistently for PATCH request
+      const requestToUpdate = requests.find((req) => req._id === id);
       const patchId = requestToUpdate?._id || id;
 
       const response = await fetch("/api/recycling-requests", {
@@ -103,12 +109,24 @@ const PickupRequestsPage: React.FC = () => {
       const result = await response.json();
       if (result.success) {
         alert("Collection proof submitted successfully.");
-        // Refresh requests
-        setRequests((prev) =>
-          prev.map((req) =>
-            req.id === id ? { ...req, ...updates } : req
-          )
-        );
+        // Refetch requests from backend to get updated data
+        try {
+          const response = await fetch("/api/recycling-requests");
+          const data = await response.json();
+          console.log("Refetched requests data:", data);
+          const userJSON = localStorage.getItem("user");
+          const user = userJSON ? JSON.parse(userJSON) : null;
+          if (user) {
+            const assignedRequests = data.filter(
+              (req: any) =>
+                req.assignedReceiver && req.assignedReceiver.id === user.id
+            );
+            console.log("Filtered assigned requests:", assignedRequests);
+            setRequests(assignedRequests);
+          }
+        } catch (fetchError) {
+          console.error("Error refetching requests:", fetchError);
+        }
         // Clear notes and images for this request
         setNotes((prev) => {
           const newNotes = { ...prev };
@@ -153,7 +171,7 @@ const PickupRequestsPage: React.FC = () => {
         <tbody className="divide-y divide-gray-200">
           {requests.map((req, index) => (
             <tr
-              key={req.id}
+              key={req._id}
               className="cursor-pointer hover:bg-gray-100"
               onClick={() => setSelectedRequest(req)}
             >
@@ -184,12 +202,12 @@ const PickupRequestsPage: React.FC = () => {
             <div className="mb-2"><strong>Status:</strong> {selectedRequest.status}</div>
             <div className="mb-2">
               <strong>Collection Notes:</strong>
-              {selectedRequest.status === "collected" ? (
+              {(selectedRequest.status === "collected" || selectedRequest.status === "received") ? (
                 <p>{selectedRequest.collectionNotes}</p>
               ) : (
                 <textarea
-                  value={notes[selectedRequest.id] || ""}
-                  onChange={(e) => handleNoteChange(selectedRequest.id, e.target.value)}
+                  value={notes[selectedRequest._id] || ""}
+                  onChange={(e) => handleNoteChange(selectedRequest._id, e.target.value)}
                   className="border p-1 rounded w-full"
                   rows={3}
                 />
@@ -197,7 +215,7 @@ const PickupRequestsPage: React.FC = () => {
             </div>
             <div className="mb-2">
               <strong>Collection Proof:</strong>
-              {selectedRequest.status === "collected" && selectedRequest.collectionProof ? (
+              {(selectedRequest.status === "collected" || selectedRequest.status === "received") && selectedRequest.collectionProof ? (
                 <img
                   src={selectedRequest.collectionProof}
                   alt="Collection Proof"
@@ -207,14 +225,14 @@ const PickupRequestsPage: React.FC = () => {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImageChange(selectedRequest.id, e)}
-                  disabled={selectedRequest.status === "collected"}
+                  onChange={(e) => handleImageChange(selectedRequest._id, e)}
+                  disabled={selectedRequest.status === "collected" || selectedRequest.status === "received"}
                 />
               )}
             </div>
-            {selectedRequest.status !== "collected" && (
+            {(selectedRequest.status !== "collected" && selectedRequest.status !== "received") && (
               <button
-                onClick={() => submitCollectionProof(selectedRequest.id)}
+                onClick={() => submitCollectionProof(selectedRequest._id)}
                 className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
               >
                 E Waste Received

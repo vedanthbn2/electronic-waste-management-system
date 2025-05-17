@@ -4,9 +4,11 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { IonIcon } from "@ionic/react";
-import { menuOutline, closeOutline, location } from "ionicons/icons";
+import { menuOutline, closeOutline, location, notificationsOutline } from "ionicons/icons";
 import logo from "../../assets/ELocate-s.png";
 import { getUser, handleLogout } from "../sign-in/auth";
+import NotificationDropdown from "../Components/NotificationDropdown";
+import { useNotification } from "../Components/NotificationContext";
 
 interface NavItemProps {
   label: string;
@@ -64,9 +66,15 @@ const Header = () => {
   const [isHeaderActive, setIsHeaderActive] = useState(false);
   const [locations, setLocation] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const { notificationRefreshCount } = useNotification();
 
   const handleToggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const handleToggleNotification = () => {
+    setIsNotificationOpen(!isNotificationOpen);
   };
 
   useEffect(() => {
@@ -162,7 +170,6 @@ const Header = () => {
               <>
                 <NavItem label="Home" isAdmin={false} />
                 <NavItem label="Receiver Dashboard" isAdmin={false} />
-                <NavItem label="Message" isAdmin={false} />
               </>
             ) : (
               <>
@@ -183,9 +190,28 @@ const Header = () => {
         </h1>
 
         {user ? (
-          <div className="relative">
+          <div className="relative flex items-center gap-4">
+            <button
+              aria-label="Notifications"
+              className="text-2xl md:mr-4 text-gray-700 hover:text-emerald-600"
+              onClick={handleToggleNotification}
+            >
+              <IonIcon icon={notificationsOutline} />
+            </button>
+        {isNotificationOpen && (
+          <NotificationDropdown
+            userId={user.role === "receiver" ? null : user.id}
+            receiverId={user.role === "receiver" ? user.id : null}
+            onClose={() => setIsNotificationOpen(false)}
+            key={notificationRefreshCount} // force re-mount to refresh notifications
+          />
+        )}
             <button className="md:mr-8 text-sm md:text-xl font-semibold" onClick={handleToggleDropdown}>
-              {user.username.charAt(0).toUpperCase() + user.username.slice(1)}
+              {user.username
+                ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
+                : user.email
+                ? user.email
+                : "User"}
             </button>
             {isDropdownOpen && (
               <div className="absolute top-12 right-0 projects p-4  shadow-md divide-y rounded-lg w-44 mt-2">

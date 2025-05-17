@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const categories = ["Smartphone", "Laptop", "TV", "Refrigerator", "Battery", "Other"];
 const conditions = ["Working", "Not Working", "Broken", "Parts Only"];
@@ -10,12 +11,23 @@ export default function RecycleForm() {
     brandName: "",
     modelName: "",
     condition: "",
-    image: null,
+    image: null as File | null,
     pickupAddress: "",
     preferredDate: "",
     preferredTime: "",
     specialInstructions: "",
   });
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const userJSON = localStorage.getItem("user");
+    if (userJSON) {
+      const user = JSON.parse(userJSON);
+      setUserId(user.id);
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, files } = e.target as HTMLInputElement;
@@ -45,11 +57,74 @@ export default function RecycleForm() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: handle form submission logic
-    console.log("Form submitted:", formData);
-    alert("Form submitted! (Functionality to be implemented)");
+
+    if (!userId) {
+      alert("You must be signed in to submit a request.");
+      return;
+    }
+
+    // Validate required fields
+    if (
+      !formData.category ||
+      !formData.brandName ||
+      !formData.modelName ||
+      !formData.condition ||
+      !formData.pickupAddress ||
+      !formData.preferredDate ||
+      !formData.preferredTime
+    ) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    try {
+      const payload = {
+        userId,
+        category: formData.category,
+        brandName: formData.brandName,
+        modelName: formData.modelName,
+        condition: formData.condition,
+        pickupAddress: formData.pickupAddress,
+        preferredDate: formData.preferredDate,
+        preferredTime: formData.preferredTime,
+        specialInstructions: formData.specialInstructions,
+        // image upload handling can be added later if needed
+      };
+
+      const response = await fetch("/api/recycling-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert("Your e-waste pickup request has been submitted successfully.");
+        // Reset form
+        setFormData({
+          category: "",
+          brandName: "",
+          modelName: "",
+          condition: "",
+          image: null,
+          pickupAddress: "",
+          preferredDate: "",
+          preferredTime: "",
+          specialInstructions: "",
+        });
+        // Navigate to my-requests page to show all requests
+        router.push("/my-requests");
+      } else {
+        alert("Failed to submit request: " + (result.error || "Unknown error"));
+      }
+    } catch (error) {
+      alert("Error submitting request: " + error);
+    }
   };
 
   return (
