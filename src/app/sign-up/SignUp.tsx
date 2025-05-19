@@ -1,8 +1,6 @@
-/* eslint-disable react/no-unescaped-entities */
-import React, { useState, ChangeEvent, FormEvent } from "react";
-import { toast } from "react-toastify";
+import React, { useState, ChangeEvent } from "react";
+import { toast, ToastContainer } from "react-toastify";
 import Link from "next/link";
-import axios from "axios";
 
 const SignUp: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +23,7 @@ const SignUp: React.FC = () => {
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    setPasswordMatch(true); // Reset password match error on input change
     setFormData((prevData: any) => ({
       ...prevData,
       [name]: value,
@@ -38,13 +37,13 @@ const SignUp: React.FC = () => {
   const register = async () => {
     console.log('Register function called');
     if (formData.password !== formData.confirmPassword) {
+      console.log('Password and confirm password do not match');
       setPasswordMatch(false);
       return;
     }
 
     try {
       console.log('Sending registration request...');
-      // Use local API route for user and receiver registration separately
       const apiUrl = role === 'user' ? '/api/users' : '/api/receivers';
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -59,9 +58,15 @@ const SignUp: React.FC = () => {
         }),
       });
       console.log('Waiting for response...');
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('Error parsing JSON:', jsonError);
+        result = null;
+      }
       console.log('Registration result:', result);
-      if (result.success) {
+      if (response.ok && result && result.success) {
         toast.success(`${role.charAt(0).toUpperCase() + role.slice(1)} registered successfully. You can now login.`);
         setFormData({
           fullName: "",
@@ -71,10 +76,18 @@ const SignUp: React.FC = () => {
           confirmPassword: "",
         });
         console.log('Navigating to sign-in page...');
-        // Re-enable navigation after successful registration
-        window.location.href = "/sign-in";
+        // Delay navigation to allow toast to show
+        setTimeout(() => {
+          window.location.href = "/sign-in?email=" + encodeURIComponent(formData.email);
+        }, 1500);
       } else {
-        toast.error("Registration failed: " + (result.error || "Unknown error"));
+        if (result && result.error === 'already signup') {
+          toast.error("Email ID already used. Please use a different email.");
+        } else if (result && result.error) {
+          toast.error("Registration failed: " + result.error);
+        } else {
+          toast.error("Registration failed: " + response.statusText);
+        }
       }
     } catch (error: any) {
       console.error('Error in registration:', error);
@@ -84,6 +97,7 @@ const SignUp: React.FC = () => {
 
   return (
     <>
+      <ToastContainer />
       <div className="my-3 text-center">
         <span className=" text-4xl font-bold">Welcome to Elocate</span>
         <span className="font-light text-gray-400 mb-4">
@@ -93,7 +107,6 @@ const SignUp: React.FC = () => {
 
       <div className="mx-auto w-4/5 md:w-256 h-[90vh] md:h-[70vh]">
         <div className="relative flex flex-col md:flex-row p-6 bg-white shadow-2xl rounded-2xl">
-          {/* Left Column */}
           <div className="flex flex-col justify-center p-4 md:w-1/2">
             <div className="py-4">
               <span className="mb-2 text-md">Role</span>
@@ -148,7 +161,6 @@ const SignUp: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column */}
           <div className="flex flex-col justify-center p-4 md:w-1/2">
             <div className="py-4">
               <span className="mb-2 text-md">Phone Number</span>
@@ -213,6 +225,7 @@ const SignUp: React.FC = () => {
           </div>
         )}
         <button
+          type="button"
           className="w-full bg-black mt-4 text-white p-2 rounded-lg mb-6 hover:bg-emerald-400 hover:text-black hover:border hover:border-gray-300"
           onClick={register}
         >

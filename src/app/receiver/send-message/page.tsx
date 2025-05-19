@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-import { useNotification } from "../../../Components/NotificationContext";
+import { useNotification } from "../../Components/NotificationContext";
 
 interface Receiver {
   id: string;

@@ -30,45 +30,48 @@ const MyRequestsPage: React.FC = () => {
         router.push("/sign-in?message=signin to view your requests");
         return;
       }
-        const userIdStr = String(user.id);
-        const userNameStr = user.username ? String(user.username) : null;
-        try {
-          const response = await fetch("/api/recycling-requests");
-          const data = await response.json();
-          console.log("Fetched requests:", data);
-          // Filter requests by logged-in user id or username (compare as strings)
-          const userRequests = data.filter((req: any) => {
-            const reqUserIdStr = req.userId ? String(req.userId) : null;
-            let assignedReceiverIdStr: string | null = null;
-            if (req.assignedReceiver) {
-              if (typeof req.assignedReceiver === "string") {
-                assignedReceiverIdStr = req.assignedReceiver;
-              } else if (typeof req.assignedReceiver === "object" && req.assignedReceiver.id) {
-                assignedReceiverIdStr = String(req.assignedReceiver.id);
-              }
+      const userIdStr = String(user.id);
+      const userRoleStr = user.role ? String(user.role) : "user";
+      try {
+        const response = await fetch("/api/recycling-requests", {
+          headers: {
+            "x-user-id": userIdStr,
+            "x-user-role": userRoleStr,
+          },
+        });
+        const data = await response.json();
+        console.log("Fetched requests:", data);
+        // Optionally keep client-side filtering as fallback
+        const userRequests = data.filter((req: any) => {
+          const reqUserIdStr = req.userId ? String(req.userId) : null;
+          let assignedReceiverIdStr: string | null = null;
+          if (req.assignedReceiver) {
+            if (typeof req.assignedReceiver === "string") {
+              assignedReceiverIdStr = req.assignedReceiver;
+            } else if (typeof req.assignedReceiver === "object" && req.assignedReceiver.id) {
+              assignedReceiverIdStr = String(req.assignedReceiver.id);
             }
-            const receivedByStr = req.receivedBy ? String(req.receivedBy) : null;
+          }
+          const receivedByStr = req.receivedBy ? String(req.receivedBy) : null;
 
-            const match =
-              reqUserIdStr === userIdStr ||
-              assignedReceiverIdStr === userIdStr ||
-              receivedByStr === userIdStr ||
-              assignedReceiverIdStr === userNameStr ||
-              receivedByStr === userNameStr;
+          const match =
+            reqUserIdStr === userIdStr ||
+            assignedReceiverIdStr === userIdStr ||
+            receivedByStr === userIdStr;
 
-            if (match) {
-              console.log("Request matched for user:", req);
-            }
-            return match;
-          });
-          console.log("Filtered user requests:", userRequests);
-          setRequests(userRequests);
-        } catch (error) {
-          console.error("Error fetching requests:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
+          if (match) {
+            console.log("Request matched for user:", req);
+          }
+          return match;
+        });
+        console.log("Filtered user requests:", userRequests);
+        setRequests(userRequests);
+      } catch (error) {
+        console.error("Error fetching requests:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchRequests();
   }, [router]);

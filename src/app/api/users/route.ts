@@ -1,54 +1,13 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import dbConnect from '../mongodb';
+import User from '../../models/User';
+import bcrypt from 'bcryptjs';
 
-const DATA_FILE = path.join(process.cwd(), 'users.json');
-
-let users: any[] = [];
-
-async function loadUsers() {
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf-8');
-    users = JSON.parse(data);
-  } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      await fs.writeFile(DATA_FILE, '[]');
-      users = [];
-    } else {
-      console.error('Error loading users:', error);
-    }
-  }
-}
-
-async function saveUsers() {
-  try {
-    await fs.writeFile(DATA_FILE, JSON.stringify(users, null, 2));
-  } catch (error: unknown) {
-    console.error('Error saving users:', error);
-  }
-}
-
-loadUsers();
+await dbConnect();
 
 export async function POST(request: Request) {
   try {
-    console.log('Received user registration request');
     const data = await request.json();
-    console.log('User registration data:', data);
-
-    // Load users fresh from file
-    let users: any[] = [];
-    try {
-      const fileData = await fs.readFile(DATA_FILE, 'utf-8');
-      users = JSON.parse(fileData);
-    } catch (error: unknown) {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-        await fs.writeFile(DATA_FILE, '[]');
-        users = [];
-      } else {
-        console.error('Error loading users:', error);
-      }
-    }
 
     // Validate required fields
     const requiredFields = ['name', 'email', 'phone', 'password'];
@@ -61,24 +20,30 @@ export async function POST(request: Request) {
       }
     }
 
+    const emailTrimmed = data.email.trim().toLowerCase();
+    const passwordTrimmed = data.password.trim();
+
     // Check if user with same email already exists
-    const existingUser = users.find(u => u.email === data.email);
+    const existingUser = await User.findOne({ email: emailTrimmed });
     if (existingUser) {
       return NextResponse.json({
         success: false,
-        error: 'User with this email already exists',
+        error: 'already signup',
       }, { status: 409 });
     }
 
-    const newUser = {
-      ...data,
-      id: 'user-' + Date.now(),
-      createdAt: new Date().toISOString(),
-      approved: false,
-    };
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(passwordTrimmed, 10);
 
-    users.push(newUser);
-    await fs.writeFile(DATA_FILE, JSON.stringify(users, null, 2));
+    const newUser = new User({
+      name: data.name.trim(),
+      email: emailTrimmed,
+      phone: data.phone.trim(),
+      password: hashedPassword,
+      approved: false,
+    });
+
+    await newUser.save();
 
     return NextResponse.json({
       success: true,
@@ -94,10 +59,19 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  if (users.length === 0) {
-    return NextResponse.json({ success: true, data: [], message: 'No users found' });
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    if (users.length === 0) {
+      return NextResponse.json({ success: true, data: [], message: 'No users found' });
+    }
+    return NextResponse.json({ success: true, data: users });
+  } catch (error: unknown) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }, { status: 500 });
   }
-  return NextResponse.json({ success: true, data: users });
 }
 
 export async function PATCH(request: Request) {
@@ -108,15 +82,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing id or updates' }, { status: 400 });
     }
 
-    const index = users.findIndex((u) => u.id === id);
-    if (index === -1) {
+    const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true });
+    if (!updatedUser) {
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    users[index] = { ...users[index], ...updates };
-    await saveUsers();
-
-    return NextResponse.json({ success: true, data: users[index] });
+    return NextResponse.json({ success: true, data: updatedUser });
   } catch (error: unknown) {
     console.error('Error updating user:', error);
     return NextResponse.json({

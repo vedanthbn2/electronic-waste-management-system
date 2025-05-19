@@ -1,43 +1,18 @@
 
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import dbConnect from '../mongodb';
+import Receiver from '../../models/Receiver';
+import bcrypt from 'bcryptjs';
 
-const DATA_FILE = path.join(process.cwd(), 'receivers.json');
-
-let receivers: any[] = [];
-
-async function loadReceivers() {
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf-8');
-    receivers = JSON.parse(data);
-  } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      await fs.writeFile(DATA_FILE, '[]');
-      receivers = [];
-    } else {
-      console.error('Error loading receivers:', error);
-    }
-  }
-}
-
-async function saveReceivers() {
-  try {
-    await fs.writeFile(DATA_FILE, JSON.stringify(receivers, null, 2));
-  } catch (error: unknown) {
-    console.error('Error saving receivers:', error);
-  }
-}
+await dbConnect();
 
 async function cleanSampleReceivers() {
-  const originalLength = receivers.length;
-  receivers = receivers.filter(r => !(r.name === 'Sample Receiver One' || r.name === 'Sample Receiver Two'));
-  if (receivers.length !== originalLength) {
-    await saveReceivers();
+  try {
+    await Receiver.deleteMany({ name: { $in: ['Sample Receiver One', 'Sample Receiver Two'] } });
+  } catch (error) {
+    console.error('Error cleaning sample receivers:', error);
   }
 }
-
-loadReceivers();
 
 export async function POST(request: Request) {
   try {
@@ -55,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     // Check for duplicate email
-    const emailExists = receivers.some(r => r.email.toLowerCase() === data.email.toLowerCase());
+    const emailExists = await Receiver.findOne({ email: data.email.toLowerCase() });
     if (emailExists) {
       return NextResponse.json({
         success: false,
@@ -63,15 +38,18 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const newReceiver = {
-      ...data,
-      id: 'receiver-' + Date.now(),
-      createdAt: new Date().toISOString(),
-      approved: false,
-    };
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    receivers.push(newReceiver);
-    await saveReceivers();
+    const newReceiver = new Receiver({
+      name: data.name,
+      email: data.email.toLowerCase(),
+      phone: data.phone,
+      password: hashedPassword,
+      approved: false,
+    });
+
+    await newReceiver.save();
 
     return NextResponse.json({
       success: true,
@@ -88,8 +66,7 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
-    receivers = [];
-    await saveReceivers();
+    await Receiver.deleteMany({});
     return NextResponse.json({ success: true, message: 'All receivers removed' });
   } catch (error: unknown) {
     console.error('Error deleting receivers:', error);
@@ -102,10 +79,19 @@ export async function DELETE() {
 
 export async function GET() {
   await cleanSampleReceivers();
-  if (receivers.length === 0) {
-    return NextResponse.json({ success: true, data: [], message: 'No receivers found' });
+  try {
+    const receivers = await Receiver.find().sort({ createdAt: -1 });
+    if (receivers.length === 0) {
+      return NextResponse.json({ success: true, data: [], message: 'No receivers found' });
+    }
+    return NextResponse.json({ success: true, data: receivers });
+  } catch (error: unknown) {
+    console.error('Error fetching receivers:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }, { status: 500 });
   }
-  return NextResponse.json({ success: true, data: receivers });
 }
 
 export async function PATCH(request: Request) {
@@ -116,15 +102,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing id or updates' }, { status: 400 });
     }
 
-    const index = receivers.findIndex((r) => r.id === id);
-    if (index === -1) {
+    const updatedReceiver = await Receiver.findByIdAndUpdate(id, updates, { new: true });
+    if (!updatedReceiver) {
       return NextResponse.json({ success: false, error: 'Receiver not found' }, { status: 404 });
     }
 
-    receivers[index] = { ...receivers[index], ...updates };
-    await saveReceivers();
-
-    return NextResponse.json({ success: true, data: receivers[index] });
+    return NextResponse.json({ success: true, data: updatedReceiver });
   } catch (error: unknown) {
     console.error('Error updating receiver:', error);
     return NextResponse.json({

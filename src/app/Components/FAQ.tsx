@@ -6,35 +6,31 @@ import { RiArrowDropDownLine, RiArrowDropUpLine } from "react-icons/ri";
 const FAQ = () => {
     const faqData = [
         {
-          question: "How does ELocate help me find e-waste recycling facilities?",
+          question: "01] Quick & Convenient E-Waste Pickup",
           answer:
-            "ELocate's intelligent facility locator uses geolocation technology to instantly identify certified e-waste recycling centers nearest to you. Simply access our interactive map interface, enter your location, and discover detailed information about each facility including operational hours, accepted materials, certification status, and user ratings—all designed to make responsible e-waste disposal effortless and convenient.",
+            "Schedule a pickup in just a few clicks. Our streamlined system ensures fast and hassle-free collection from your doorstep—whether you're a household, office, or business",
         },
         {
-          question: "How does ELocate verify the facilities listed on the platform?",
+          question: "02] Smart Recycling Made Simple",
           answer:
-            "We implement a rigorous multi-step verification process for all facilities on our platform. Each facility undergoes credential validation, certification verification, operational compliance checks, and ongoing monitoring. We also incorporate user feedback and regular audits to maintain the highest standards of accuracy and reliability—ensuring you can trust every facility recommendation we provide.",
+            "We make responsible recycling easy. Just tell us what you’ve got, and we’ll take care of the rest—from pickup to proper processing at certified facilities.",
         },
         {
-          question: "Can I schedule the pickup and recycling of my e-waste through ELocate?",
+          question: "03] On-Demand Pickup Scheduling",
           answer:
-            "Absolutely! Our streamlined booking system allows you to schedule e-waste pickups with just a few clicks. Select your preferred facility, choose from available time slots, specify the type and quantity of e-waste, and receive immediate confirmation. Many of our partner facilities also offer special incentives for ELocate users, making responsible recycling not just convenient but rewarding as well.",
+            "Choose a time that works for you. Our flexible, on-demand scheduling makes it easy to book e-waste pickups around your routine—no waiting, no hassle.",
         },
         {
-          question: "What kind of educational resources does ELocate offer?",
+          question: "04] Real-Time Tracking & Updates",
           answer:
-            "ELocate features a comprehensive knowledge hub with expert-curated content including in-depth articles, video tutorials, infographics, and case studies. Our educational resources cover topics ranging from the environmental impact of e-waste to best practices in electronics lifecycle management, emerging recycling technologies, and regulatory compliance. We regularly update our content to reflect the latest research and innovations in sustainable e-waste management.",
+            "Stay in the loop from pickup to processing. Track your e-waste in real time and receive instant updates on its recycling journey.",
         },
         {
-          question: "How can I stay updated on changing e-waste regulations and compliance requirements?",
+          question: "05] Eco-Friendly Logistics",
           answer:
-            "Our dedicated regulatory center maintains a real-time database of local, national, and international e-waste regulations. Subscribers receive customized compliance alerts based on their location and business needs. Our platform also provides simplified explanations of complex regulatory frameworks, practical compliance guides, and access to compliance certification pathways—turning regulatory complexity into actionable insights.",
+            "We partner with green transport providers to reduce carbon emissions during every pickup and delivery, making your recycling efforts even more sustainable.",
         },
-        {
-          question: "What additional benefits do I get by subscribing to the ELocate newsletter?",
-          answer:
-            "Our newsletter subscribers gain exclusive access to premium content including expert interviews, early notification of recycling events, special recycling incentive programs, and industry trend analyses. You'll also receive personalized recycling recommendations, invitations to virtual and in-person sustainability workshops, and opportunities to connect with our growing community of environmentally conscious individuals and organizations. Join thousands of subscribers already benefiting from our curated insights.",
-        },
+        
       ];
       
 
@@ -53,8 +49,8 @@ const FAQ = () => {
       <Container >
         <Row>
           <Col>
-            <h2 className="text-center text-3xl font-bold mb-2">Frequently Asked Questions</h2>
-            <p className="text-center text-gray-600 mb-8">Everything you need to know about ELocate and responsible e-waste management</p>
+            <h2 className="text-center text-3xl font-bold mb-2">Why You Should Recycle Your Electronics with E-Waste Recycling</h2>
+            <p className="text-center text-gray-600 mb-8">Our services are designed to simplify your e-waste disposal experience</p>
             <div className="mt-8">
               {faqData.map((item, index) => (
                 <div

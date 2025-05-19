@@ -1,14 +1,29 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+"use client";
+
+import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import Link from "next/link";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
+import { useRouter, useSearchParams } from "next/navigation";
 import { setEmail, setPhoneNumber, setToken, setUser, setUserID, setUserName, setfullname } from "./auth";
 
 const Signin: React.FC = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+
+  useEffect(() => {
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setFormData((prevData) => ({
+        ...prevData,
+        email: emailParam,
+      }));
+    }
+  }, [searchParams]);
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -28,23 +43,33 @@ const Signin: React.FC = () => {
 
   const login = async (e: FormEvent) => {
     e.preventDefault();
-    toast.loading("Loading..")
+    toast.info("Loading...");
     try {
-      const response = await axios.post(
-        "/api/auth/signin",
-        formData
-      );
-      const  user  = response.data;
+      // Trim email and password before sending
+      const emailTrimmed = formData.email.trim();
+      const passwordTrimmed = formData.password.trim();
+
+      const response = await axios.post("/api/auth/signin", {
+        email: emailTrimmed,
+        password: passwordTrimmed,
+      });
+      const user = response.data;
       console.log(user);
-  
+
+      if (!user.success) {
+        toast.error(user.error || "Login Failed. Please check your credentials.", { toastId: "login-error" });
+        return;
+      }
+
       localStorage.setItem("user", JSON.stringify(user));
-  
-      toast.success("Login Successful!");
-  
+
+      toast.success("Login Successful!", { toastId: "login-success" });
+
+
       if (user) {
         setUser(user);
         setEmail(user.email);
-        setToken(user.token)
+        setToken(user.token);
         setPhoneNumber(user.phoneNumber);
         setfullname(user.fullname);
         setUserID(user.id);
@@ -52,7 +77,7 @@ const Signin: React.FC = () => {
           setUserName(user.username);
         }
       }
-  
+
       if (user.role === "admin") {
         window.location.href = "/admin/requests";
       } else {
@@ -60,13 +85,14 @@ const Signin: React.FC = () => {
       }
     } catch (error) {
       console.error("Login failed:", error);
-      toast.error("Login Failed. Please check your credentials.");
+      toast.error("Login Failed. Please check your credentials.", { toastId: "login-error" });
     }
   };
 
   return (
     <div className="flex items-center justify-center md:h-screen h-[70vh]">
       <ToastContainer
+        data-testid="toast-container"
         className="text-2xl"
         position="top-right"
         autoClose={3000}

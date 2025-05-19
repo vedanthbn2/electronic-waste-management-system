@@ -1,30 +1,16 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import dbConnect from '../mongodb';
+import User from '../../models/User';
+import Receiver from '../../models/Receiver';
 
-const DATA_FILE = path.join(process.cwd(), 'users.json');
-
-let users: any[] = [];
-
-async function loadUsers() {
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf-8');
-    users = JSON.parse(data);
-  } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      await fs.writeFile(DATA_FILE, '[]');
-      users = [];
-    } else {
-      console.error('Error loading users:', error);
-    }
-  }
-}
-
-loadUsers();
+await dbConnect();
 
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
+
+    console.log('Login attempt with email:', email);
+    console.log('Login attempt with password:', password);
 
     if (!email || !password) {
       return NextResponse.json({
@@ -33,27 +19,61 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const user = users.find(u => u.email === email && u.password === password);
+    const emailTrimmed = email.trim().toLowerCase();
+    const passwordTrimmed = password.trim();
 
-    if (!user) {
+    // Find user by email only
+    const userByEmail = await User.findOne({ email: emailTrimmed });
+    console.log('User found by email:', userByEmail);
+
+    // Find receiver by email only
+    const receiverByEmail = await Receiver.findOne({ email: emailTrimmed });
+    console.log('Receiver found by email:', receiverByEmail);
+
+    // Check User collection with password
+    const user = await User.findOne({ email: emailTrimmed, password: passwordTrimmed });
+    const userPasswordMatch = user ? true : false;
+    console.log('User password match:', userPasswordMatch);
+
+    if (user) {
       return NextResponse.json({
-        success: false,
-        error: 'Invalid email or password',
-      }, { status: 401 });
+        success: true,
+        data: {
+          id: user._id,
+          email: user.email,
+          fullName: user.name,
+          phoneNumber: user.phone,
+          token: 'mock-token-' + Date.now(),
+          role: 'user',
+        },
+      });
+    }
+
+    // Check Receiver collection with password
+    const receiver = await Receiver.findOne({ email: emailTrimmed, password: passwordTrimmed });
+    const receiverPasswordMatch = receiver ? true : false;
+    console.log('Receiver password match:', receiverPasswordMatch);
+
+    if (receiver) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: receiver._id,
+          email: receiver.email,
+          fullName: receiver.name,
+          phoneNumber: receiver.phone,
+          token: 'mock-token-' + Date.now(),
+          role: 'receiver',
+        },
+      });
     }
 
     return NextResponse.json({
-      success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        fullName: user.name,
-        phoneNumber: user.phone,
-        token: 'mock-token-' + Date.now(),
-      },
-    });
+      success: false,
+      error: 'Invalid email or password',
+    }, { status: 401 });
   } catch (error: unknown) {
-    console.error('Error during user login:', error);
+    console.error('Error during login:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
