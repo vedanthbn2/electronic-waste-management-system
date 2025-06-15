@@ -4,10 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   getEmail,
-  getPhoneNumber,
-  getUserID,
   getfullname,
   isAuthenticated,
+  getUser,
 } from "../../sign-in/auth";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -31,15 +30,22 @@ interface BookingData {
   pickupDate: string;
   pickupTime: string;
   fullName: string;
+  category?: string;
   address: string;
   phone: number;
   location?: Location;
   deviceCondition?: string;
   accessories?: string[];
+  deviceImageUrl?: string;
   preferredContactNumber?: string;
   alternateContactNumber?: string;
   specialInstructions?: string;
   declarationChecked?: boolean;
+  status?: string;
+  receiverEmail?: string;
+  receiverPhone?: string;
+  receiverName?: string;
+  model?: string;
 }
 
 const Smartphone: React.FC = () => {
@@ -61,6 +67,8 @@ const Smartphone: React.FC = () => {
   const [alternateContactNumber, setAlternateContactNumber] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [declarationChecked, setDeclarationChecked] = useState(false);
+
+  const [fullNameInput, setFullNameInput] = useState("");
 
   const getCurrentLocation = () => {
     setIsGettingLocation(true);
@@ -162,9 +170,7 @@ const Smartphone: React.FC = () => {
   }, []);
 
   const email = getEmail();
-  const userId = getUserID();
-  const phone = getPhoneNumber();
-  const fullname = getfullname();
+  const fullname = getfullname() || getUser()?.fullname || "";
 
   const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
 
@@ -190,9 +196,13 @@ const Smartphone: React.FC = () => {
   }, []);
 
   const handleSubmit = async () => {
-    const recycleItem = selectedBrand + " " + modelInput;
+    const model = selectedBrand + " " + modelInput;
+    const user = getUser();
+    const userId = user ? user.id : "";
+    const userRole = user ? user.role : "user";
+
     console.log("Form values:", {
-      recycleItem,
+      model,
       pickupDate,
       pickupTime,
       fullname,
@@ -205,11 +215,12 @@ const Smartphone: React.FC = () => {
       declarationChecked,
       email,
       userId,
+      userRole,
     });
 
     if (isLoggedIn) {
       if (
-        recycleItem &&
+        model &&
         pickupDate &&
         pickupTime &&
         fullname &&
@@ -220,37 +231,64 @@ const Smartphone: React.FC = () => {
         email &&
         userId
       ) {
+        let imageUrl = "";
+        if (deviceImage) {
+          const formData = new FormData();
+          formData.append("file", deviceImage);
+          try {
+            const uploadResponse = await fetch("/api/uploadImage", {
+              method: "POST",
+              body: formData,
+            });
+            const uploadData = await uploadResponse.json();
+            if (uploadData.success) {
+              imageUrl = uploadData.url;
+            } else {
+              toast.error("Image upload failed");
+            }
+          } catch (error) {
+            console.error("Image upload error:", error);
+            toast.error("Image upload error");
+          }
+        }
+
         const newBooking: BookingData = {
           userId: userId,
           userEmail: email,
-          recycleItem: recycleItem,
+          recycleItem: model,
           pickupDate,
           pickupTime,
           fullName: fullname,
+          category: "smartphone",
           address,
           phone: Number(preferredContactNumber),
           location: location,
           deviceCondition,
-          accessories,
+          accessories: accessories.length > 0 ? accessories : undefined,
+          deviceImageUrl: imageUrl,
           preferredContactNumber,
           alternateContactNumber,
           specialInstructions,
           declarationChecked,
+          status: "pending",
+          receiverEmail: "",
+          receiverPhone: "",
+          receiverName: "",
+          model: model,
         };
 
         setBookingData([...bookingData, newBooking]);
         setIsLoading(true);
 
         try {
-          const formData = new FormData();
-          formData.append("data", JSON.stringify(newBooking));
-          if (deviceImage) {
-            formData.append("deviceImage", deviceImage);
-          }
-
-          const response = await fetch("/api/recycling-requests", {
+          const response = await fetch("/api/recyclingRequests", {
             method: "POST",
-            body: formData,
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": userId,
+              "x-user-role": userRole,
+            },
+            body: JSON.stringify(newBooking),
           });
 
           const responseData = await response.json();
@@ -270,8 +308,9 @@ const Smartphone: React.FC = () => {
             setAlternateContactNumber("");
             setSpecialInstructions("");
             setDeclarationChecked(false);
+            router.push("/my-requests");
           } else {
-            toast.error(`Error: ${responseData.message || "Failed to submit data"}`, {
+            toast.error(`Error: ${responseData.error || "Failed to submit data"}`, {
               autoClose: 5000,
             });
           }
@@ -283,7 +322,7 @@ const Smartphone: React.FC = () => {
         }
       } else {
         const missingFields = [];
-        if (!recycleItem) missingFields.push("brand and model");
+        if (!model) missingFields.push("brand and model");
         if (!pickupDate) missingFields.push("pickup date");
         if (!pickupTime) missingFields.push("pickup time");
         if (!fullname) missingFields.push("full name");
@@ -329,13 +368,13 @@ const Smartphone: React.FC = () => {
           <h2 className="text-2xl font-semibold mb-4">Device Details:</h2>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="brand">
             Brand
           </label>
           <select
             id="brand"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             value={selectedBrand}
             onChange={handleBrandChange}
             required
@@ -349,14 +388,14 @@ const Smartphone: React.FC = () => {
           </select>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="model">
             Model
           </label>
           <input
             type="text"
             id="model"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             value={modelInput}
             onChange={(e) => setModelInput(e.target.value)}
             placeholder="Enter Model"
@@ -364,13 +403,13 @@ const Smartphone: React.FC = () => {
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="deviceCondition">
             Device Condition
           </label>
           <select
             id="deviceCondition"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             value={deviceCondition}
             onChange={(e) => setDeviceCondition(e.target.value)}
             required
@@ -382,7 +421,7 @@ const Smartphone: React.FC = () => {
           </select>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2">Accessories Included</label>
           <div className="flex flex-col">
             {["Charger", "back cover", "Box", "None"].map((acc) => (
@@ -392,7 +431,7 @@ const Smartphone: React.FC = () => {
                   value={acc}
                   checked={accessories.includes(acc)}
                   onChange={handleAccessoryChange}
-                  className="mr-2"
+                  className="mr-2 bg-white"
                 />
                 {acc}
               </label>
@@ -400,7 +439,7 @@ const Smartphone: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="deviceImage">
             Upload Device Image (Optional)
           </label>
@@ -415,7 +454,7 @@ const Smartphone: React.FC = () => {
                 setDeviceImage(null);
               }
             }}
-            className="w-full"
+          className="w-full bg-white"
           />
         </div>
 
@@ -424,14 +463,14 @@ const Smartphone: React.FC = () => {
           <h2 className="text-2xl font-semibold mb-4">Pickup & Contact Details:</h2>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="pickupDate">
             Pickup Date
           </label>
           <input
             type="date"
             id="pickupDate"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             min={currentDate}
             value={pickupDate}
             onChange={(e) => setPickupDate(e.target.value)}
@@ -439,27 +478,27 @@ const Smartphone: React.FC = () => {
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="pickupTime">
             Pickup Time
           </label>
           <input
             type="time"
             id="pickupTime"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             value={pickupTime}
             onChange={(e) => setPickupTime(e.target.value)}
             required
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="address">
             Pickup Address
           </label>
           <textarea
             id="address"
-            className="w-full p-2 border rounded mb-2"
+          className="w-full p-2 border rounded mb-2 bg-white"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             required
@@ -486,7 +525,7 @@ const Smartphone: React.FC = () => {
           <input
             type="tel"
             id="preferredContactNumber"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             value={preferredContactNumber}
             onChange={(e) => setPreferredContactNumber(e.target.value)}
             required
@@ -500,7 +539,7 @@ const Smartphone: React.FC = () => {
           <input
             type="tel"
             id="alternateContactNumber"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             value={alternateContactNumber}
             onChange={(e) => setAlternateContactNumber(e.target.value)}
           />
@@ -512,7 +551,7 @@ const Smartphone: React.FC = () => {
           </label>
           <textarea
             id="specialInstructions"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white"
             value={specialInstructions}
             onChange={(e) => setSpecialInstructions(e.target.value)}
             placeholder="e.g., Call before 30 min arrival"
@@ -520,7 +559,7 @@ const Smartphone: React.FC = () => {
         </div>
 
         {/* Declaration Section */}
-        <div className="md:col-span-2 mb-4">
+        <div className="md:col-span-2 mb-4" style={{ height: '1cm' }}>
           <label className="inline-flex items-center">
             <input
               type="checkbox"

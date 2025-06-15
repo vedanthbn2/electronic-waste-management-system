@@ -45,17 +45,24 @@ const SignUp: React.FC = () => {
     try {
       console.log('Sending registration request...');
       const apiUrl = role === 'user' ? '/api/users' : '/api/receivers';
+
+      const names = formData.fullName.trim().split(" ");
+      const firstName = names[0];
+      const lastName = names.length > 1 ? names.slice(1).join(" ") : "";
+
+      const requestBody = {
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phoneNumber,
+        password: formData.password,
+      };
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: formData.fullName,
-          email: formData.email,
-          phone: formData.phoneNumber,
-          password: formData.password,
-        }),
+        body: JSON.stringify(requestBody),
       });
       console.log('Waiting for response...');
       let result;
@@ -67,6 +74,8 @@ const SignUp: React.FC = () => {
       }
       console.log('Registration result:', result);
       if (response.ok && result && result.success) {
+        // Save fullname to localStorage for later use
+        localStorage.setItem("fullname", formData.fullName);
         toast.success(`${role.charAt(0).toUpperCase() + role.slice(1)} registered successfully. You can now login.`);
         setFormData({
           fullName: "",
