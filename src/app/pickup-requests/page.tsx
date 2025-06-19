@@ -8,19 +8,23 @@ interface PickupRequest {
   _id: string;
   id?: string;
   userId: string;
-  fullName: string;
-  phone: number;
-  category: string;
+  userEmail: string;
+  fullName?: string; // added fullName to interface
+  recycleItem: string;
+  recycleItemFromForm?: string; // added to hold category from form
+  pickupDate: string;
+  pickupTime: string;
+  deviceCondition: string;
   status: string;
-  address: string;
-  assignedReceiver?: {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-  };
+  assignedReceiver: string;
+  receiverEmail: string;
+  receiverPhone: string;
+  receiverName: string;
+  address?: string;
+  createdAt: Date;
   collectionNotes?: string;
   collectionProof?: string; // base64 image string
+  userIdToShow?: string; // added to hold user id for display if needed
 }
 
 const PickupRequestsPage: React.FC = () => {
@@ -29,7 +33,25 @@ const PickupRequestsPage: React.FC = () => {
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [images, setImages] = useState<{ [key: string]: string }>({});
   const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null);
+  const [lastSubmittedRequest, setLastSubmittedRequest] = useState<PickupRequest | null>(null);
+  const [showSubmittedDetails, setShowSubmittedDetails] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // On mount, check if there is a last submitted request in sessionStorage
+    const storedRequest = sessionStorage.getItem("lastSubmittedRequest");
+    if (storedRequest) {
+      try {
+        const parsedRequest = JSON.parse(storedRequest);
+        setLastSubmittedRequest(parsedRequest);
+        setShowSubmittedDetails(true);
+      } catch (e) {
+        console.error("Failed to parse lastSubmittedRequest from sessionStorage", e);
+        sessionStorage.removeItem("lastSubmittedRequest");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -40,17 +62,26 @@ const PickupRequestsPage: React.FC = () => {
         return;
       }
       try {
-        const response = await axios.get("/api/recycling-requests");
+        const response = await axios.get("/api/recyclingRequests", {
+          headers: {
+            "x-user-id": user.id,
+            "x-user-role": user.role,
+          },
+        });
         console.log("User id from localStorage:", user?.id);
         console.log("Fetched requests:", response.data);
         // Filter requests assigned to this receiver
-        const assignedRequests = response.data.filter(
+        const assignedRequests = response.data.data.filter(
           (req: any) => {
-            const assignedId = req.assignedReceiver?.id;
-            console.log(`Checking request ${req._id} assignedReceiver.id:`, assignedId);
+            const assignedReceiver = req.assignedReceiver;
+            const assignedId = typeof assignedReceiver === 'string' ? assignedReceiver : assignedReceiver?.id;
+            console.log(`Checking request ${req._id} assignedReceiver:`, assignedReceiver, 'assignedId:', assignedId);
             return assignedId === user.id;
           }
         );
+        if (assignedRequests.length > 0) {
+          console.log("Sample request object:", assignedRequests[0]);
+        }
         console.log("Filtered assigned requests:", assignedRequests);
         setRequests(assignedRequests);
       } catch (error) {
@@ -82,6 +113,9 @@ const PickupRequestsPage: React.FC = () => {
     const note = notes[id] || "";
     const image = images[id] || "";
 
+    // Helper function to validate MongoDB ObjectId
+    const isValidObjectId = (id: string) => /^[a-fA-F0-9]{24}$/.test(id);
+
     if (!image) {
       alert("Please upload an image as collection proof.");
       return;
@@ -98,24 +132,72 @@ const PickupRequestsPage: React.FC = () => {
       const requestToUpdate = requests.find((req) => req._id === id);
       const patchId = requestToUpdate?._id || id;
 
-      const response = await fetch("/api/recycling-requests", {
+      if (!isValidObjectId(patchId)) {
+        alert("Invalid request ID. Cannot submit collection proof.");
+        return;
+      }
+
+      console.log("Submitting collection proof for request ID:", patchId);
+
+      // Get user info from localStorage here
+      const userJSON = localStorage.getItem("user");
+      const user = userJSON ? JSON.parse(userJSON) : null;
+      if (!user) {
+        alert("User not authenticated.");
+        return;
+      }
+
+      const response = await fetch("/api/recyclingRequests", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "x-user-id": user.id,
+          "x-user-role": user.role,
         },
         body: JSON.stringify({ id: patchId, updates }),
       });
 
       const result = await response.json();
       if (result.success) {
-        alert("Collection proof submitted successfully.");
+        // Instead of alert, set lastSubmittedRequest and show modal
+        if (requestToUpdate) {
+          setLastSubmittedRequest(requestToUpdate);
+          sessionStorage.setItem("lastSubmittedRequest", JSON.stringify(requestToUpdate));
+        } else {
+          // If requestToUpdate is undefined, create a minimal object with required fields and dummy values for missing required fields
+          const minimalRequest: PickupRequest = {
+            _id: patchId,
+            id: undefined,
+            userId: "",
+            userEmail: "",
+            recycleItem: "",
+            pickupDate: "",
+            pickupTime: "",
+            deviceCondition: "",
+            status: updates.status,
+            assignedReceiver: "",
+            receiverEmail: "",
+            receiverPhone: "",
+            receiverName: "",
+            createdAt: new Date(),
+            collectionNotes: updates.collectionNotes,
+            collectionProof: updates.collectionProof,
+          };
+          setLastSubmittedRequest(minimalRequest);
+          sessionStorage.setItem("lastSubmittedRequest", JSON.stringify(minimalRequest));
+        }
+        setShowSubmittedDetails(true);
+
         // Refetch requests from backend to get updated data
         try {
-          const response = await fetch("/api/recycling-requests");
+          const response = await fetch("/api/recyclingRequests", {
+            headers: {
+              "x-user-id": user.id,
+              "x-user-role": user.role,
+            },
+          });
           const data = await response.json();
           console.log("Refetched requests data:", data);
-          const userJSON = localStorage.getItem("user");
-          const user = userJSON ? JSON.parse(userJSON) : null;
           if (user) {
             const assignedRequests = data.filter(
               (req: any) =>
@@ -162,25 +244,26 @@ const PickupRequestsPage: React.FC = () => {
         <thead className="bg-gray-100">
           <tr>
             <th className="py-3 px-4 text-left">S.No</th>
-            <th className="py-3 px-4 text-left">User Name</th>
-            <th className="py-3 px-4 text-left">E-waste Type</th>
-            <th className="py-3 px-4 text-left">Pickup Address</th>
+            <th className="py-3 px-4 text-left">Name</th>
+            <th className="py-3 px-4 text-left">Phone Number</th>
+            <th className="py-3 px-4 text-left">Category</th>
             <th className="py-3 px-4 text-left">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {requests.map((req, index) => (
-            <tr
-              key={req._id}
-              className="cursor-pointer hover:bg-gray-100"
-              onClick={() => setSelectedRequest(req)}
-            >
-              <td className="py-3 px-4">{index + 1}</td>
-              <td className="py-3 px-4">{req.fullName}</td>
-              <td className="py-3 px-4">{req.category}</td>
-              <td className="py-3 px-4">{req.address}</td>
-              <td className="py-3 px-4">{req.status}</td>
-            </tr>
+          <tr
+            key={req._id}
+            className="cursor-pointer hover:bg-gray-100"
+            style={{ height: '1cm' }}
+            onClick={() => setSelectedRequest(req)}
+          >
+            <td className="py-3 px-4">{index + 1}</td>
+            <td className="py-3 px-4">{req.fullName || 'Unknown'}</td>
+            <td className="py-3 px-4">{req.receiverPhone && req.receiverPhone !== "0000000000" ? req.receiverPhone : "N/A"}</td>
+            <td className="py-3 px-4">{req.recycleItem.toLowerCase() === 'unknown' ? (req.recycleItemFromForm || 'Unknown') : req.recycleItem}</td>
+            <td className="py-3 px-4">{req.status}</td>
+          </tr>
           ))}
         </tbody>
       </table>
@@ -195,15 +278,15 @@ const PickupRequestsPage: React.FC = () => {
               &times;
             </button>
             <h2 className="text-xl font-bold mb-4">Pickup Request Details</h2>
-            <div className="mb-2"><strong>User Name:</strong> {selectedRequest.fullName}</div>
-            <div className="mb-2"><strong>Phone:</strong> {selectedRequest.phone}</div>
-            <div className="mb-2"><strong>E-waste Type:</strong> {selectedRequest.category}</div>
-            <div className="mb-2"><strong>Pickup Address:</strong> {selectedRequest.address}</div>
-            <div className="mb-2"><strong>Status:</strong> {selectedRequest.status}</div>
+              <div className="mb-2"><strong>User Email:</strong> {selectedRequest.userEmail}</div>
+              <div className="mb-2"><strong>Receiver Phone:</strong> {selectedRequest.receiverPhone}</div>
+              <div className="mb-2"><strong>E-waste Type:</strong> {selectedRequest.recycleItem}</div>
+              {/* <div className="mb-2"><strong>Pickup Address:</strong> {selectedRequest.address}</div> */}
+              <div className="mb-2"><strong>Status:</strong> {selectedRequest.status}</div>
             <div className="mb-2">
               <strong>Collection Notes:</strong>
-              {(selectedRequest.status === "collected" || selectedRequest.status === "received") ? (
-                <p>{selectedRequest.collectionNotes}</p>
+              {(selectedRequest.status === "collected" || selectedRequest.status === "received" || selectedRequest.status === "received by recycler") && !editMode ? (
+                <p>{selectedRequest.collectionNotes ? selectedRequest.collectionNotes : "No notes provided."}</p>
               ) : (
                 <textarea
                   value={notes[selectedRequest._id] || ""}
@@ -215,34 +298,100 @@ const PickupRequestsPage: React.FC = () => {
             </div>
             <div className="mb-2">
               <strong>Collection Proof:</strong>
-              {(selectedRequest.status === "collected" || selectedRequest.status === "received") && selectedRequest.collectionProof ? (
+              {(selectedRequest.status === "collected" || selectedRequest.status === "received" || selectedRequest.status === "received by recycler") && selectedRequest.collectionProof && !editMode ? (
                 <img
                   src={selectedRequest.collectionProof}
                   alt="Collection Proof"
                   className="max-w-xs max-h-48"
                 />
               ) : (
+                <React.Fragment>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => handleImageChange(selectedRequest._id, e)}
-                  disabled={selectedRequest.status === "collected" || selectedRequest.status === "received"}
+                  disabled={selectedRequest.status === "collected" || selectedRequest.status === "received" || selectedRequest.status === "received by recycler"}
                 />
+                {!selectedRequest.collectionProof && (
+                  <button
+                    onClick={() => submitCollectionProof(selectedRequest._id)}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2"
+                  >
+                    E Waste Received
+                  </button>
+                )}
+                </React.Fragment>
               )}
             </div>
-            {(selectedRequest.status !== "collected" && selectedRequest.status !== "received") && (
-              <button
-                onClick={() => submitCollectionProof(selectedRequest._id)}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              >
-                E Waste Received
-              </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal to show submitted details once */}
+      {showSubmittedDetails && lastSubmittedRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
+              onClick={() => {
+                setShowSubmittedDetails(false);
+                sessionStorage.removeItem("lastSubmittedRequest");
+              }}
+            >
+              &times;
+            </button>
+            <h2 className="text-xl font-bold mb-4">Submitted Pickup Request Details</h2>
+            <div className="mb-2"><strong>User Email:</strong> {lastSubmittedRequest.userEmail}</div>
+            <div className="mb-2"><strong>Receiver Phone:</strong> {lastSubmittedRequest.receiverPhone}</div>
+            <div className="mb-2"><strong>E-waste Type:</strong> {lastSubmittedRequest.recycleItem}</div>
+            <div className="mb-2"><strong>Status:</strong> {lastSubmittedRequest.status}</div>
+            <div className="mb-2">
+              <strong>Collection Notes:</strong>
+              {editMode ? (
+                <textarea
+                  value={notes[lastSubmittedRequest._id] || lastSubmittedRequest.collectionNotes || ""}
+                  onChange={(e) => handleNoteChange(lastSubmittedRequest._id, e.target.value)}
+                  className="border p-1 rounded w-full"
+                  rows={3}
+                />
+              ) : (
+                lastSubmittedRequest.collectionNotes || "No notes provided."
+              )}
+            </div>
+            {lastSubmittedRequest.collectionProof && !editMode ? (
+              <div className="mb-2">
+                <strong>Collection Proof:</strong>
+                <img
+                  src={lastSubmittedRequest.collectionProof}
+                  alt="Collection Proof"
+                  className="max-w-xs max-h-48"
+                />
+              </div>
+            ) : (
+              <React.Fragment>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageChange(lastSubmittedRequest._id, e)}
+                />
+                <button
+                  onClick={() => submitCollectionProof(lastSubmittedRequest._id)}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2"
+                >
+                  {editMode ? "Update Collection Proof" : "E Waste Received"}
+                </button>
+              </React.Fragment>
             )}
+            <button
+              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              onClick={() => setEditMode(!editMode)}
+            >
+              {editMode ? "Cancel Edit" : "Edit"}
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 };
-
 export default PickupRequestsPage;

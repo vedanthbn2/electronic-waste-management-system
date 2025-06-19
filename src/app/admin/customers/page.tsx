@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { useNotification } from "../../Components/NotificationContext";
 
 interface User {
   id: string;
@@ -17,7 +16,6 @@ const CustomersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [showMessagePopup, setShowMessagePopup] = useState(false);
-  const { refreshNotifications } = useNotification();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -49,7 +47,6 @@ const CustomersPage: React.FC = () => {
         if (res.data.success) {
           setShowMessagePopup(false);
           alert(`Message sent to ${selectedUser.name}`);
-          refreshNotifications(); // notify to refresh notifications
         } else {
           alert("Failed to send message: " + res.data.error);
         }

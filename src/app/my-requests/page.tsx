@@ -33,39 +33,21 @@ const MyRequestsPage: React.FC = () => {
       const userIdStr = String(user.id);
       const userRoleStr = user.role ? String(user.role) : "user";
       try {
-        const response = await fetch("/api/recycling-requests", {
+        const response = await fetch("/api/recyclingRequests", {
           headers: {
             "x-user-id": userIdStr,
             "x-user-role": userRoleStr,
           },
         });
         const data = await response.json();
-        console.log("Fetched requests:", data);
-        // Optionally keep client-side filtering as fallback
-        const userRequests = data.filter((req: any) => {
-          const reqUserIdStr = req.userId ? String(req.userId) : null;
-          let assignedReceiverIdStr: string | null = null;
-          if (req.assignedReceiver) {
-            if (typeof req.assignedReceiver === "string") {
-              assignedReceiverIdStr = req.assignedReceiver;
-            } else if (typeof req.assignedReceiver === "object" && req.assignedReceiver.id) {
-              assignedReceiverIdStr = String(req.assignedReceiver.id);
-            }
-          }
-          const receivedByStr = req.receivedBy ? String(req.receivedBy) : null;
-
-          const match =
-            reqUserIdStr === userIdStr ||
-            assignedReceiverIdStr === userIdStr ||
-            receivedByStr === userIdStr;
-
-          if (match) {
-            console.log("Request matched for user:", req);
-          }
-          return match;
-        });
-        console.log("Filtered user requests:", userRequests);
-        setRequests(userRequests);
+        console.log("Logged in user:", user);
+        console.log("API response data:", data);
+        // The API already filters requests by user, so no need to filter again
+        if (data.success && Array.isArray(data.data)) {
+          setRequests(data.data);
+        } else {
+          setRequests([]);
+        }
       } catch (error) {
         console.error("Error fetching requests:", error);
       } finally {
@@ -92,7 +74,6 @@ const MyRequestsPage: React.FC = () => {
           <thead className="bg-gray-100">
             <tr>
               <th className="py-3 px-4 text-left">S.No</th>
-              <th className="py-3 px-4 text-left">Request ID</th>
               <th className="py-3 px-4 text-left">E-waste Item</th>
               <th className="py-3 px-4 text-left">Pickup Date</th>
               <th className="py-3 px-4 text-left">Pickup Time</th>
@@ -107,7 +88,6 @@ const MyRequestsPage: React.FC = () => {
                 onClick={() => router.push(`/my-requests/${req._id || req.id}`)}
               >
                 <td className="py-3 px-4">{index + 1}</td>
-                <td className="py-3 px-4">{req._id || req.id}</td>
                 <td className="py-3 px-4">{req.recycleItem}</td>
                 <td className="py-3 px-4">{req.pickupDate}</td>
                 <td className="py-3 px-4">{req.pickupTime}</td>

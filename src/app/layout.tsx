@@ -11,8 +11,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "ELocate",
-  description: "ELocate - One stop solution to Recycle E-Waste, E-waste Facility Locator",
+  title: "E-waste",
+  description: "E-waste - One stop solution to Recycle E-Waste, E-waste Facility Locator",
 };
 
 
@@ -46,7 +46,8 @@ export default function RootLayout({
             `,
         }}
       />{" "}
-      <Script
+      {/* Removed chatbot script as per user request */}
+      {/* <Script
       id="tawk_chatbot"
         type="text/javascript"
         dangerouslySetInnerHTML={{
@@ -63,7 +64,7 @@ export default function RootLayout({
               })();
             `,
         }}
-      />
+      /> */}
       <body className={poppins.className} style={{ backgroundColor: '#a6fbb2' }}>
       <NextTopLoader color="#28af60" showSpinner={false}/>
       <LayoutWrapper>

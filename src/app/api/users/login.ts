@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '../mongodb';
 import User from '../../models/User';
 import Receiver from '../../models/Receiver';
+import bcrypt from 'bcryptjs';
 
 await dbConnect();
 
@@ -23,49 +24,47 @@ export async function POST(request: Request) {
     const passwordTrimmed = password.trim();
 
     // Find user by email only
-    const userByEmail = await User.findOne({ email: emailTrimmed });
-    console.log('User found by email:', userByEmail);
-
-    // Find receiver by email only
-    const receiverByEmail = await Receiver.findOne({ email: emailTrimmed });
-    console.log('Receiver found by email:', receiverByEmail);
-
-    // Check User collection with password
-    const user = await User.findOne({ email: emailTrimmed, password: passwordTrimmed });
-    const userPasswordMatch = user ? true : false;
-    console.log('User password match:', userPasswordMatch);
+    const user = await User.findOne({ email: emailTrimmed });
+    console.log('User found by email:', user);
 
     if (user) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: user._id,
-          email: user.email,
-          fullName: user.name,
-          phoneNumber: user.phone,
-          token: 'mock-token-' + Date.now(),
-          role: 'user',
-        },
-      });
+      const isMatch = await bcrypt.compare(passwordTrimmed, user.password);
+      console.log('User password match:', isMatch);
+      if (isMatch) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: user._id,
+            email: user.email,
+            fullName: user.name,
+            phoneNumber: user.phone,
+            token: 'mock-token-' + Date.now(),
+            role: 'user',
+          },
+        });
+      }
     }
 
-    // Check Receiver collection with password
-    const receiver = await Receiver.findOne({ email: emailTrimmed, password: passwordTrimmed });
-    const receiverPasswordMatch = receiver ? true : false;
-    console.log('Receiver password match:', receiverPasswordMatch);
+    // Find receiver by email only
+    const receiver = await Receiver.findOne({ email: emailTrimmed });
+    console.log('Receiver found by email:', receiver);
 
     if (receiver) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: receiver._id,
-          email: receiver.email,
-          fullName: receiver.name,
-          phoneNumber: receiver.phone,
-          token: 'mock-token-' + Date.now(),
-          role: 'receiver',
-        },
-      });
+      const isMatch = await bcrypt.compare(passwordTrimmed, receiver.password);
+      console.log('Receiver password match:', isMatch);
+      if (isMatch) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: receiver._id,
+            email: receiver.email,
+            fullName: receiver.name,
+            phoneNumber: receiver.phone,
+            token: 'mock-token-' + Date.now(),
+            role: 'receiver',
+          },
+        });
+      }
     }
 
     return NextResponse.json({

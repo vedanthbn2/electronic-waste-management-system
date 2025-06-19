@@ -34,6 +34,7 @@ async function writeSubmissions(submissions: Submission[]) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
+
     const { name, email, phone, message } = data;
 
     if (!name || !email || !phone || !message) {
@@ -56,6 +57,28 @@ export async function POST(request: NextRequest) {
     submissions.push(newSubmission);
 
     await writeSubmissions(submissions);
+
+    // Notify all admins about new user feedback
+    try {
+      const User = (await import('../../models/User')).default;
+      const admins = await User.find({ role: 'admin' }).select('_id name').lean();
+      for (const admin of admins) {
+        const adminNotificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: admin._id.toString(),
+            message: `New user feedback received from ${name || email || 'a user'}.`,
+          }),
+        });
+        const adminNotificationResult = await adminNotificationResponse.json();
+        if (!adminNotificationResult.success) {
+          console.error(`Failed to create notification for admin ${admin._id}:`, adminNotificationResult.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating admin notifications for feedback:', error);
+    }
 
     return NextResponse.json({ message: "Submission saved", submission: newSubmission }, { status: 201 });
   } catch (error) {

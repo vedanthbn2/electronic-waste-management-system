@@ -65,7 +65,6 @@ const Signin: React.FC = () => {
 
       toast.success("Login Successful!", { toastId: "login-success" });
 
-
       if (user) {
         setUser(user);
         setEmail(user.email);
@@ -78,10 +77,11 @@ const Signin: React.FC = () => {
         }
       }
 
+      // Use router.push instead of window.location.href for SPA navigation
       if (user.role === "admin") {
-        window.location.href = "/admin/requests";
+        router.push("/admin/pickup-requested");
       } else {
-        window.location.href = "/";
+        router.push("/");
       }
     } catch (error) {
       console.error("Login failed:", error);

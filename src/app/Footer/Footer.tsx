@@ -77,42 +77,30 @@ const Footer = () => {
         Empowering responsible e-waste disposal by connecting users with recycling partners — simplifying the journey toward a cleaner, greener future.
       </p>
       <div className="social-icons-container flex justify-center space-x-6 my-4">
-        <Link
-          target="_blank"
-          rel="noopener noreferrer"
-          href="#"
+        <span
           aria-label="Connect with ELocate on LinkedIn"
           className="social-link"
         >
           <IonIcon icon={logoLinkedin} />
-        </Link>
-        <Link
-          target="_blank"
-          rel="noopener noreferrer"
-          href="#"
+        </span>
+        <span
           aria-label="Follow ELocate on Instagram"
           className="social-link"
         >
           <IonIcon icon={logoInstagram} />
-        </Link>
-        <Link
-          target="_blank"
-          rel="noopener noreferrer"
-          href="#"
+        </span>
+        <span
           aria-label="Follow ELocate on Twitter"
           className="social-link"
         >
           <IonIcon icon={logoTwitter} />
-        </Link>
-        <Link
-          target="_blank"
-          rel="noopener noreferrer"
-          href="#"
+        </span>
+        <span
           aria-label="Contact ELocate on WhatsApp"
           className="social-link"
         >
           <IonIcon icon={logoWhatsapp} />
-        </Link>
+        </span>
       </div>
       <div className="footer-bottom">
         <div className="container">

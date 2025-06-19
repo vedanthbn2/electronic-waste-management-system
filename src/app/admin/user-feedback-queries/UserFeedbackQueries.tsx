@@ -40,14 +40,28 @@ const UserFeedbackQueries: React.FC = () => {
 
         // Fetch user feedbacks
         const feedbackRes = await axios.get("/api/contactus");
-        setFeedbacks(feedbackRes.data.map((fb: any) => ({
-          id: fb._id || Math.random().toString(36).substr(2, 9),
-          name: fb.name || "",
-          email: fb.email || "",
-          message: fb.message || "",
-          adminResponse: fb.adminResponse || "",
-          createdAt: fb.createdAt || new Date().toISOString(),
-        })));
+        const feedbacksRaw = feedbackRes.data;
+
+        // Fetch user profiles for emails in feedbacks
+        const emails = feedbacksRaw.map((fb: any) => fb.email);
+        const uniqueEmails = Array.from(new Set(emails));
+        const userProfilesRes = await axios.post("/api/users/list", { emails: uniqueEmails });
+        const userProfiles = userProfilesRes.data || [];
+
+        // Map feedbacks to replace name and email with user profile data if found
+        const feedbacksMapped = feedbacksRaw.map((fb: any) => {
+          const userProfile = userProfiles.find((u: any) => u.email === fb.email);
+          return {
+            id: fb._id || Math.random().toString(36).substr(2, 9),
+            name: userProfile?.name || fb.name || "",
+            email: userProfile?.email || fb.email || "",
+            message: fb.message || "",
+            adminResponse: fb.adminResponse || "",
+            createdAt: fb.createdAt || new Date().toISOString(),
+          };
+        });
+
+        setFeedbacks(feedbacksMapped);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -92,7 +106,7 @@ const UserFeedbackQueries: React.FC = () => {
         prev.map(fb => fb.id === currentFeedback.id ? { ...fb, adminResponse: responseText } : fb)
       );
       closeReplyModal();
-      router.push(`/admin/users?email=${encodeURIComponent(currentFeedback.email)}`);
+      // router.push(`/admin/users?email=${encodeURIComponent(currentFeedback.email)}`);
     } catch (error) {
       console.error("Error sending response:", error);
       alert("Failed to send response");
@@ -141,12 +155,16 @@ const UserFeedbackQueries: React.FC = () => {
                 </td>
                 <td className="py-3 px-4">{new Date(fb.createdAt).toLocaleDateString()}</td>
                 <td className="py-3 px-4">
-                  <button
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
-                    onClick={() => openReplyModal(fb)}
-                  >
-                    Reply
-                  </button>
+                  {!fb.adminResponse ? (
+                    <button
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+                      onClick={() => openReplyModal(fb)}
+                    >
+                      Reply
+                    </button>
+                  ) : (
+                    <span className="text-gray-500 font-semibold">Replied</span>
+                  )}
                 </td>
               </tr>
             ))}

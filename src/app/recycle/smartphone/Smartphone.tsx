@@ -421,23 +421,7 @@ const Smartphone: React.FC = () => {
           </select>
         </div>
 
-        <div className="mb-4" style={{ height: '1cm' }}>
-          <label className="block text-gray-700 mb-2">Accessories Included</label>
-          <div className="flex flex-col">
-            {["Charger", "back cover", "Box", "None"].map((acc) => (
-              <label key={acc} className="inline-flex items-center mb-1">
-                <input
-                  type="checkbox"
-                  value={acc}
-                  checked={accessories.includes(acc)}
-                  onChange={handleAccessoryChange}
-                  className="mr-2 bg-white"
-                />
-                {acc}
-              </label>
-            ))}
-          </div>
-        </div>
+        {/* Accessories Included section removed as per user request */}
 
         <div className="mb-4" style={{ height: '1cm' }}>
           <label className="block text-gray-700 mb-2" htmlFor="deviceImage">

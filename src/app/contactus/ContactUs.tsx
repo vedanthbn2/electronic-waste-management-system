@@ -15,13 +15,10 @@ import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Head from "next/head";
-import { getUser } from "../sign-in/auth";
+import { getUser, getfullname, getEmail, getPhoneNumber } from "../sign-in/auth";
 
 const ContactUs = () => {
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
     message: "",
   });
 
@@ -98,33 +95,35 @@ const ContactUs = () => {
     e.preventDefault();
 
     // Client-side validation
-    if (!formData.name.trim()) {
-      toast.error("Name is required.");
-      return;
-    }
-    if (!formData.email.trim()) {
-      toast.error("Email is required.");
-      return;
-    }
-    if (!formData.phone.trim()) {
-      toast.error("Phone number is required.");
-      return;
-    }
     if (!formData.message.trim()) {
       toast.error("Message is required.");
       return;
     }
 
+    const fullname = getfullname();
+    const email = getEmail();
+    const phoneNumber = getPhoneNumber();
+
+    if (!fullname || !email || !phoneNumber) {
+      toast.error("Please complete your profile with name, email, and phone before sending a message.");
+      return;
+    }
+
     try {
-      await axios.post("/api/contactus", formData);
+      const dataToSend = {
+        name: fullname,
+        email: email,
+        phone: phoneNumber,
+        message: formData.message,
+      };
+
+      await axios.post("/api/contactus", dataToSend);
       setFormData({
-        name: "",
-        email: "",
-        phone: "",
         message: "",
       });
       toast.success("Message Received! Our team will respond shortly.");
     } catch (error) {
+      console.error("Error sending message:", error);
       toast.error("We encountered an issue. Please try again or email us directly.");
     }
   };
@@ -183,60 +182,7 @@ const ContactUs = () => {
                 className="newsletter-form mb-0 mx-auto md:mb-4"
                 onSubmit={SendMsg}
               >
-                <div className="mb-4 ">
-                  <label
-                    htmlFor="name"
-                    className="block text-gray-800 font-semibold mb-2 text-xl"
-                  >
-                    Your Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    className="email-field bg-white"
-                    placeholder="Enter your full name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="email"
-                    className="block text-gray-800 font-semibold mb-2 text-xl"
-                  >
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    className="email-field bg-white"
-                    placeholder="Your email address"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="phone"
-                    className="block text-gray-800 font-semibold mb-2 text-xl"
-                  >
-                    Phone Number
-                  </label>
-                  <input
-                    type="phone"
-                    id="phone"
-                    name="phone"
-                    className="email-field bg-white"
-                    placeholder="Your contact number"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+                {/* Removed Your Name, Email Address, and Phone Number fields as per request */}
                 <div className="mb-6">
                   <label
                     htmlFor="message"

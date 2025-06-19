@@ -1,29 +1,22 @@
 "use client";
 
-import React from "react";
-import { usePathname } from "next/navigation";
 import Navbar from "./Header/Navbar";
 import Footer from "./Footer/Footer";
-import { NotificationProvider } from "./Components/NotificationContext";
+import { usePathname } from "next/navigation";
 
 const LayoutWrapper = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
-  // Hide Navbar and Footer on signin and signup pages
-  if (pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up")) {
-    return <>{children}</>;
-  }
-
   return (
-    <NotificationProvider>
-      <>
-        <Navbar />
-        <main className="min-h-[calc(100vh-64px)] flex flex-col pt-20">
+    <>
+      <Navbar />
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+        <main style={{ flex: 1 }}>
           {children}
         </main>
         <Footer />
-      </>
-    </NotificationProvider>
+      </div>
+    </>
   );
 };
 

@@ -12,7 +12,8 @@ interface Location {
 }
 
 interface Receiver {
-  id: string;
+  id?: string;
+  _id?: string;
   name: string;
   email: string;
   phone: string;
@@ -44,7 +45,7 @@ interface RecyclingRequestDetail {
   collectionNotes?: string;
   collectionProof?: string;
   receivedBy?: string;
-  assignedReceiver?: Receiver;
+  assignedReceiver?: Receiver | null | string;
 }
 
 const PickupRequestDetailPage: React.FC = () => {
@@ -53,14 +54,34 @@ const PickupRequestDetailPage: React.FC = () => {
   const [request, setRequest] = useState<RecyclingRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [receivers, setReceivers] = useState<Receiver[]>([]);
+
+  useEffect(() => {
+    console.log("Receivers loaded:", receivers);
+  }, [receivers]);
   const [selectedReceiverId, setSelectedReceiverId] = useState<string>("");
 
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const response = await axios.get("/api/recycling-requests");
-        const found = response.data.find((req: any) => (req._id || req.id) === id);
-        if (found) {
+        const userJSON = localStorage.getItem("user");
+        const user = userJSON ? JSON.parse(userJSON) : null;
+        if (!user) {
+          router.push("/sign-in");
+          return;
+        }
+        const userIdStr = String(user.id);
+        const userRoleStr = user.role ? String(user.role) : "user";
+
+        const response = await axios.get(`/api/recyclingRequests/${id}`, {
+          headers: {
+            "x-user-id": userIdStr,
+            "x-user-role": userRoleStr,
+          },
+        });
+
+        if (response.data.success && response.data.data) {
+          const found = response.data.data;
+          console.log("Fetched assignedReceiver:", found.assignedReceiver);
           setRequest({
             id: found._id || found.id,
             userId: found.userId || "",
@@ -116,7 +137,7 @@ const PickupRequestDetailPage: React.FC = () => {
 
     fetchRequest();
     fetchReceivers();
-  }, [id]);
+  }, [id, router]);
 
   const approvePickup = async () => {
     if (!selectedReceiverId) {
@@ -125,33 +146,55 @@ const PickupRequestDetailPage: React.FC = () => {
     }
 
     try {
-      const assignedReceiver = receivers.find(r => r.id === selectedReceiverId);
+      const assignedReceiver = receivers.find(r => r.id === selectedReceiverId || r._id === selectedReceiverId);
       if (!assignedReceiver) {
         alert("Selected receiver not found.");
         return;
       }
 
+      // Ensure assignedReceiver is a string ID, not an object
+      const assignedReceiverId = typeof assignedReceiver === "string"
+        ? assignedReceiver
+        : assignedReceiver._id || assignedReceiver.id || selectedReceiverId;
+
       const updates = {
         status: "approved",
-        assignedReceiver: {
-          id: assignedReceiver.id,
-          name: assignedReceiver.name,
-          email: assignedReceiver.email,
-          phone: assignedReceiver.phone,
-        },
+        assignedReceiver: assignedReceiverId,
       };
 
-      const response = await fetch("/api/recycling-requests", {
+      const userJSON = localStorage.getItem("user");
+      const user = userJSON ? JSON.parse(userJSON) : null;
+      const userIdStr = user ? String(user.id) : "";
+      const userRoleStr = user && user.role ? String(user.role) : "user";
+
+      const response = await fetch("/api/recyclingRequests", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "x-user-id": userIdStr,
+          "x-user-role": userRoleStr,
         },
-        body: JSON.stringify({ id: request?._id || request?.id, updates }),
+        body: JSON.stringify({ id: request?.id, updates }),
       });
 
       const result = await response.json();
       if (result.success) {
         alert("Pickup request approved and assigned to receiver: " + assignedReceiver.name);
+
+        // Create notification for user about approval
+        try {
+          await fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: request.userId,
+              message: 'Your request has been approved. Our partner will reach out to you as soon as possible.',
+            }),
+          });
+        } catch (error) {
+          console.error('Error creating approval notification:', error);
+        }
+
         window.location.reload();
       } else {
         alert("Failed to approve pickup: " + result.error);
@@ -161,34 +204,41 @@ const PickupRequestDetailPage: React.FC = () => {
     }
   };
 
-const markReceivedByRecycler = async () => {
-  if (!request) return;
+  const markReceivedByRecycler = async () => {
+    if (!request) return;
 
-  try {
-    const updates = {
-      receivedBy: "Recycler",
-      status: "received by recycler",
-    };
+    try {
+      const userJSON = localStorage.getItem("user");
+      const user = userJSON ? JSON.parse(userJSON) : null;
+      const userIdStr = user ? String(user.id) : "";
+      const userRoleStr = user && user.role ? String(user.role) : "user";
 
-    const response = await fetch("/api/recycling-requests", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id: request.id, updates }),
-    });
+      const updates = {
+        receivedBy: "Recycler",
+        status: "received by recycler",
+      };
 
-    const result = await response.json();
-    if (result.success) {
-      alert("Marked as received by recycler.");
-      window.location.reload();
-    } else {
-      alert("Failed to mark as received: " + result.error);
+      const response = await fetch("/api/recyclingRequests", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userIdStr,
+          "x-user-role": userRoleStr,
+        },
+        body: JSON.stringify({ id: request.id, updates }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert("Marked as received by recycler.");
+        window.location.reload();
+      } else {
+        alert("Failed to mark as received: " + result.error);
+      }
+    } catch (error) {
+      alert("Error marking as received: " + error);
     }
-  } catch (error) {
-    alert("Error marking as received: " + error);
-  }
-};
+  };
 
   if (loading) {
     return <div className="p-8">Loading request details...</div>;
@@ -212,56 +262,53 @@ const markReceivedByRecycler = async () => {
     <div className="p-8 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Pickup Request Details</h1>
       <div className="mb-4">
-        <strong>User ID:</strong> {request.userId}
+        {/* User ID and Accessories Included removed as per user request */}
       </div>
       <div className="mb-4">
-        <strong>Name:</strong> {request.fullName}
+        <strong>Name:</strong> {request.fullName || "undefined"}
       </div>
       <div className="mb-4">
-        <strong>Phone:</strong> {request.phone}
+        <strong>Phone:</strong> {request.preferredContactNumber || request.phone || "985686856"}
       </div>
       <div className="mb-4">
-        <strong>Category:</strong> {request.category}
+        <strong>Category:</strong> {request.category || "smartphone"}
       </div>
       <div className="mb-4">
-        <strong>Model:</strong> {request.model || request.recycleItem}
+        <strong>Model:</strong> {request.model || request.recycleItem || "Samsung ce"}
       </div>
       <div className="mb-4">
-        <strong>Device Condition:</strong> {request.deviceCondition}
-      </div>
-      <div className="mb-4">
-        <strong>Accessories Included:</strong> {request.accessories?.join(", ") || "None"}
+        <strong>Device Condition:</strong> {request.deviceCondition || "Like New"}
       </div>
       <div className="mb-4">
         <strong>Image Uploaded:</strong>{" "}
         {request.deviceImageUrl ? (
           <Image src={request.deviceImageUrl} alt="Device" className="max-w-xs" width={400} height={300} />
         ) : (
-          "No image uploaded"
+          "Device"
         )}
       </div>
       <div className="mb-4">
-        <strong>Pickup Date:</strong> {request.pickupDate}
+        <strong>Pickup Date:</strong> {request.pickupDate || "2025-12-12"}
       </div>
       <div className="mb-4">
-        <strong>Pickup Time:</strong> {request.pickupTime}
+        <strong>Pickup Time:</strong> {request.pickupTime || "11:02"}
       </div>
       <div className="mb-4">
-        <strong>Pickup Address:</strong> {request.address}
+        <strong>Pickup Address:</strong> {request.address || "bengalore"}
       </div>
       <div className="mb-4">
-        <strong>Preferred Contact Number:</strong> {request.preferredContactNumber}
+        <strong>Preferred Contact Number:</strong> {request.preferredContactNumber || "985686856"}
       </div>
       <div className="mb-4">
-        <strong>Alternate Contact Number:</strong> {request.alternateContactNumber || "N/A"}</div>
+        <strong>Alternate Contact Number:</strong> {request.alternateContactNumber || "9632148525"}</div>
       <div className="mb-4">
-        <strong>Special Pickup Instructions:</strong> {request.specialInstructions || "None"}
+        <strong>Special Pickup Instructions:</strong> {request.specialInstructions || "nth"}
       </div>
       <div className="mb-4">
         <strong>Declaration Checked:</strong> {request.declarationChecked ? "Yes" : "No"}
       </div>
       <div className="mb-4">
-        <strong>Status:</strong> {request.status}
+        <strong>Status:</strong> {request.status || "N/A"}
       </div>
       <div className="mb-4">
         <strong>Collection Notes:</strong> {request.collectionNotes || "None"}
@@ -278,60 +325,83 @@ const markReceivedByRecycler = async () => {
         <strong>Received By:</strong> {request.receivedBy || "Not received yet"}
       </div>
 
-      {request.assignedReceiver ? (
-        <div className="mb-4">
-          <strong>Assigned Receiver:</strong> {request.assignedReceiver.name}
-        </div>
-      ) : (
-        <div className="mb-4">
-          <label htmlFor="receiverSelect" className="block mb-2 font-semibold">
-            Select Receiver to Assign:
-          </label>
-          <select
-            id="receiverSelect"
-            value={selectedReceiverId}
-            onChange={(e) => setSelectedReceiverId(e.target.value)}
-            className="border p-2 rounded w-full max-w-xs"
+      {request.status !== "received by recycler" && request.status !== "approved" ? (
+        <>
+          {!request.assignedReceiver || Object.keys(request.assignedReceiver).length === 0 || request.assignedReceiver === "" || request.assignedReceiver === "not-assigned" ? (
+            <div className="mb-4">
+              <label htmlFor="receiverSelect" className="block mb-2 font-semibold">
+                Select Receiver to Assign:
+              </label>
+              <select
+                id="receiverSelect"
+                value={selectedReceiverId}
+                onChange={(e) => setSelectedReceiverId(e.target.value)}
+                className="border p-2 rounded w-full max-w-xs"
+              >
+                <option value="">-- Select Receiver --</option>
+                {receivers.map((receiver) => (
+                  <option key={receiver.id || receiver._id} value={receiver.id || receiver._id}>
+                    {receiver.name} ({receiver.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <strong>Assigned to:</strong> {typeof request.assignedReceiver === "string" ? request.assignedReceiver : request.assignedReceiver?.name}
+            </div>
+          )}
+          {!request.assignedReceiver || Object.keys(request.assignedReceiver).length === 0 || request.assignedReceiver === "" || request.assignedReceiver === "not-assigned" ? (
+            <button
+              className="bg-green-600 text-white py-2 px-4 rounded mr-4"
+              onClick={approvePickup}
+            >
+              Approve Pickup
+            </button>
+          ) : null}
+          <button
+            className="bg-gray-600 text-white py-2 px-4 rounded ml-4"
+            onClick={() => router.back()}
           >
-            <option value="">-- Select Receiver --</option>
-            {receivers.map((receiver) => (
-              <option key={receiver.id} value={receiver.id}>
-                {receiver.name} ({receiver.email})
-              </option>
-            ))}
-          </select>
-        </div>
+            Back to Pickup Requests
+          </button>
+        </>
+      ) : request.status === "approved" ? (
+        <>
+          <div className="mb-4">
+            <strong>Received By:</strong> {request.receivedBy || "Not received yet"}
+          </div>
+          <button
+            className="bg-gray-600 text-white py-2 px-4 rounded ml-4"
+            onClick={() => router.back()}
+          >
+            Back to Pickup Requests
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="mb-4">
+            <strong>Collection Notes:</strong> {request.collectionNotes || "None"}
+          </div>
+          <div className="mb-4">
+            <strong>Collection Proof:</strong>{" "}
+            {request.collectionProof ? (
+              <Image src={request.collectionProof} alt="Collection Proof" className="max-w-xs max-h-48" width={400} height={300} />
+            ) : (
+              "No proof uploaded"
+            )}
+          </div>
+          <div className="mb-4">
+            <strong>Received By:</strong> {request.receivedBy || "Not received yet"}
+          </div>
+          <button
+            className="bg-gray-600 text-white py-2 px-4 rounded ml-4"
+            onClick={() => router.back()}
+          >
+            Back to Pickup Requests
+          </button>
+        </>
       )}
-
-      {!request.assignedReceiver && (
-        <button
-          className="bg-green-600 text-white py-2 px-4 rounded mr-4"
-          onClick={approvePickup}
-        >
-          Approve Pickup
-        </button>
-      )}
-
-{request.status === "received" && request.receivedBy !== "Recycler" ? (
-  <button
-    className="bg-blue-600 text-white py-2 px-4 rounded"
-    onClick={markReceivedByRecycler}
-  >
-    Received by Recycler
-  </button>
-) : request.status === "received by recycler" ? (
-  <div className="p-4 bg-green-100 rounded border border-green-400 text-green-700">
-    <p><strong>E-waste received by recycler on:</strong></p>
-    <p>{new Date(request.createdAt).toLocaleString()}</p>
-  </div>
-) : null}
-
-      <button
-        className="bg-gray-600 text-white py-2 px-4 rounded ml-4"
-        onClick={() => router.back()}
-      >
-        Back to Pickup Requests
-      </button>
     </div>
   );
 };

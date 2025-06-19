@@ -2,9 +2,8 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-import { useNotification } from "../../Components/NotificationContext";
 
-interface Receiver {
+interface User {
   id: string;
   name: string;
   email: string;
@@ -12,50 +11,48 @@ interface Receiver {
 }
 
 const SendMessagePage: React.FC = () => {
-  const [receivers, setReceivers] = useState<Receiver[]>([]);
-  const [selectedReceiver, setSelectedReceiver] = useState<Receiver | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [message, setMessage] = useState("");
   const [showMessagePopup, setShowMessagePopup] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { refreshNotifications } = useNotification();
 
   React.useEffect(() => {
-    const fetchReceivers = async () => {
+    const fetchUsers = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("/api/receivers");
+        const response = await axios.get("/api/users");
         if (response.data.success) {
-          setReceivers(response.data.data);
+          setUsers(response.data.data);
         } else {
-          alert("Failed to fetch receivers");
+          alert("Failed to fetch users");
         }
       } catch (error) {
-        console.error("Error fetching receivers:", error);
-        alert("Error fetching receivers");
+        console.error("Error fetching users:", error);
+        alert("Error fetching users");
       } finally {
         setLoading(false);
       }
     };
-    fetchReceivers();
+    fetchUsers();
   }, []);
 
-  const openMessagePopup = (receiver: Receiver) => {
-    setSelectedReceiver(receiver);
+  const openMessagePopup = (user: User) => {
+    setSelectedUser(user);
     setMessage("");
     setShowMessagePopup(true);
   };
 
   const submitMessage = async () => {
-    if (selectedReceiver && message.trim() !== "") {
+    if (selectedUser && message.trim() !== "") {
       try {
-        const res = await axios.post("/api/notifications", {
-          receiverId: selectedReceiver.id,
+        const res = await axios.post("/api/sendMessage", {
+          userId: selectedUser.id,
           message,
         });
         if (res.data.success) {
           setShowMessagePopup(false);
-          alert(`Message sent to ${selectedReceiver.name}`);
-          refreshNotifications();
+          alert(`Message sent to ${selectedUser.name}`);
         } else {
           alert("Failed to send message: " + res.data.error);
         }
@@ -70,9 +67,9 @@ const SendMessagePage: React.FC = () => {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Receivers</h1>
+      <h1 className="text-3xl font-bold mb-6">Users</h1>
       {loading ? (
-        <div>Loading receivers...</div>
+        <div>Loading users...</div>
       ) : (
         <>
           <table className="min-w-full bg-white rounded-lg overflow-hidden">
@@ -85,15 +82,15 @@ const SendMessagePage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {receivers.map((receiver) => (
-                <tr key={receiver.id} className="hover:bg-gray-100">
-                  <td className="py-3 px-4">{receiver.name || "N/A"}</td>
-                  <td className="py-3 px-4">{receiver.email || "N/A"}</td>
-                  <td className="py-3 px-4">{receiver.phone || "N/A"}</td>
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-100">
+                  <td className="py-3 px-4">{user.name || "N/A"}</td>
+                  <td className="py-3 px-4">{user.email || "N/A"}</td>
+                  <td className="py-3 px-4">{user.phone || "N/A"}</td>
                   <td className="py-3 px-4">
                     <button
                       className="bg-blue-600 text-white py-1 px-3 rounded"
-                      onClick={() => openMessagePopup(receiver)}
+                      onClick={() => openMessagePopup(user)}
                     >
                       Send Message
                     </button>
@@ -107,7 +104,7 @@ const SendMessagePage: React.FC = () => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded shadow-lg w-96">
                 <h2 className="text-xl font-semibold mb-4">
-                  Send Message to {selectedReceiver?.name}
+                  Send Message to {selectedUser?.name}
                 </h2>
                 <textarea
                   className="w-full border rounded p-2 mb-4"

@@ -53,6 +53,29 @@ export async function PATCH(
 
     await writeSubmissions(submissions);
 
+    // Create notification for user who submitted feedback about admin response
+    try {
+      const User = (await import('../../../models/User')).default;
+      // Find user by email from submission
+      const user = await User.findOne({ email: submissions[index].email }).select('_id').lean();
+      if (user) {
+        const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user._id.toString(),
+            message: `Admin replied to your feedback: ${adminResponse}`,
+          }),
+        });
+        const notificationResult = await notificationResponse.json();
+        if (!notificationResult.success) {
+          console.error('Failed to create notification for user feedback reply:', notificationResult.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating notification for user feedback reply:', error);
+    }
+
     return NextResponse.json({ message: "Admin response updated", submission: submissions[index] });
   } catch (error) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });

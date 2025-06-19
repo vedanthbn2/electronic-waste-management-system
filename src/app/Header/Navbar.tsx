@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { IonIcon } from "@ionic/react";
-import { menuOutline, closeOutline, location, notificationsOutline } from "ionicons/icons";
+import { menuOutline, closeOutline, location, mailOutline } from "ionicons/icons";
 import logo from "../../assets/ELocate-s.png";
 import { getUser, handleLogout } from "../sign-in/auth";
-import NotificationDropdown from "../Components/NotificationDropdown";
-import { useNotification } from "../Components/NotificationContext";
 
 interface NavItemProps {
   label: string;
@@ -62,12 +61,16 @@ const NavItem = ({ label, isAdmin }: NavItemProps) => {
 };
 
 const Header = () => {
+  const [user, setUser] = useState<null | { role?: string; username?: string; email?: string; id?: string }>(null);
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
+
+  const pathname = usePathname();
+
   const [isNavbarActive, setIsNavbarActive] = useState(false);
   const [isHeaderActive, setIsHeaderActive] = useState(false);
   const [locations, setLocation] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const { notificationRefreshCount } = useNotification();
 
   const handleToggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
@@ -135,7 +138,23 @@ const Header = () => {
     };
   }, []);
 
-  const user = getUser();
+  useEffect(() => {
+    // Load user from localStorage on mount and on pathname change
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    } else {
+      setUser(null);
+    }
+    setIsUserLoaded(true);
+  }, [pathname]);
+
+  // Removed notification fetching useEffect as notifications are removed
+
+  if (!isUserLoaded) {
+    // Optionally render nothing or a loading indicator while user is loading
+    return null;
+  }
 
   const toggleNavbar = () => {
     setIsNavbarActive(!isNavbarActive);
@@ -145,13 +164,14 @@ const Header = () => {
     <header className={`header ${isHeaderActive ? "active" : ""}`} data-header>
       <div className="container shadow-md">
         <Link href="/">
-          <Image src={logo} alt="ELocate" width={100} height={100} className="logo ml-4 logo md:ml-16 " />
+          {/* Removed logo image and replaced with text "e-waste" */}
+          <span className="text-3xl font-bold text-emerald-600 ml-4 md:ml-16 py-8">e-waste</span>
         </Link>
 
         <nav className={`navbar ${isNavbarActive ? "active" : ""}`} data-navbar>
           <div className="wrapper">
             <Link href="/" className="logo">
-              ELocate
+              E-waste
             </Link>
             <button className="nav-close-btn" aria-label="close menu" data-nav-toggler onClick={toggleNavbar}>
               <IonIcon icon={closeOutline} className={`close-icon ${isNavbarActive ? "" : "hidden"}`}></IonIcon>
@@ -191,26 +211,12 @@ const Header = () => {
 
         {user ? (
           <div className="relative flex items-center gap-4">
-            <button
-              aria-label="Notifications"
-              className="text-2xl md:mr-4 text-gray-700 hover:text-emerald-600"
-              onClick={handleToggleNotification}
-            >
-              <IonIcon icon={notificationsOutline} />
-            </button>
-        {isNotificationOpen && (
-          <NotificationDropdown
-            userId={user.role === "receiver" ? null : user.id}
-            receiverId={user.role === "receiver" ? user.id : null}
-            onClose={() => setIsNotificationOpen(false)}
-            key={notificationRefreshCount} // force re-mount to refresh notifications
-          />
-        )}
+          {/* Removed message logo button as per request */}
             <button className="md:mr-8 text-sm md:text-xl font-semibold" onClick={handleToggleDropdown}>
               {user.username
                 ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
                 : user.email
-                ? user.email
+                ? user.email ?? "User"
                 : "User"}
             </button>
             {isDropdownOpen && (
